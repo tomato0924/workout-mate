@@ -1,0 +1,98 @@
+{
+  "meta": {
+    "project": "Workout Group Management System",
+    "date": "2025-12-22",
+    "prepared_by": "Software Development Manager"
+  },
+  "product_overview": "A web platform enabling users to sign up, create workout groups, log workout sessions with media uploads, and manage user roles including admin approvals with robust security and data integrity measures.",
+  "core_goals": [
+    "Provide secure and seamless user authentication and role-based authorization.",
+    "Support group lifecycle management including creation, membership approval, and invite codes.",
+    "Enable detailed workout logging with dynamic fields and image storage.",
+    "Deliver a comprehensive admin dashboard for user and group moderation."
+  ],
+  "key_features": [
+    "User signup, login with automatic super admin assignment for the first user, and strict role-based access control using RLS policies.",
+    "Group management with automatic owner membership, unique invite codes, and approval workflows enforced via database triggers and constraints.",
+    "Workout logging supporting variable sport-specific data fields, image uploads stored securely with proper authorization, and database-level data integrity.",
+    "Admin dashboard for monitoring and managing approval status of users and groups, enforcing elevated privileges for sensitive operations."
+  ],
+  "user_flow_summary": [
+    "User signs up; if first user, auto-approved as super admin; otherwise approval pending.",
+    "User logs in; pending users have restricted access until approved by admin.",
+    "User creates or joins a group, receiving an invite code if applicable; group owner auto-added as member.",
+    "User logs workout with required fields depending on sport, optionally uploading images stored securely under user-specific paths.",
+    "Admin views pending users and groups in dashboard and approves or rejects them, triggering immediate permission updates."
+  ],
+  "validation_criteria": [
+    "First user signup triggers automatic approval and super admin role assignment in the database.",
+    "Pending users are blocked from accessing approved-user data via RLS policies.",
+    "Unique constraints prevent duplicate email registration and invite codes.",
+    "Group owner is automatically added to group membership upon creation via database trigger.",
+    "Workout data enforces required fields and constraints per sport type even if bypassing frontend validation.",
+    "Storage rules enforce upload permissions and path structures preventing unauthorized access or overwrites.",
+    "Admin restricted data views and approval actions function correctly, updating user roles and access permissions immediately.",
+    "Race conditions during initial signup and profile creation do not cause login errors or data inconsistencies."
+  ],
+  "code_summary": {
+    "tech_stack": [
+      "TypeScript",
+      "Next.js",
+      "Supabase",
+      "PostgreSQL",
+      "Mantine UI"
+    ],
+    "features": [
+      {
+        "name": "Authentication & Authorization",
+        "description": "User signup, login, and automatic approval for first user (Super Admin). Includes RLS policies and Triggers.",
+        "files": [
+          "app/signup/page.tsx",
+          "app/login/page.tsx",
+          "lib/supabase/middleware.ts",
+          "supabase-schema.sql",
+          "supabase-rls.sql"
+        ],
+        "api_doc": {
+          "summary": "Handles user authentication and role assignment via Triggers."
+        }
+      },
+      {
+        "name": "Group Management",
+        "description": "Group creation, invite code generation, joining groups, and approval workflows. Includes 'add_owner_to_group' trigger.",
+        "files": [
+          "app/dashboard/groups/page.tsx",
+          "supabase-schema.sql",
+          "supabase-rls.sql"
+        ],
+        "api_doc": {
+          "summary": "Manages group lifecycle and membership."
+        }
+      },
+      {
+        "name": "Workout Logging",
+        "description": "Creating workout records with dynamic fields and image uploads. Enforces data integrity.",
+        "files": [
+          "app/dashboard/workouts/new/page.tsx",
+          "app/dashboard/workouts/[id]/page.tsx",
+          "supabase-schema.sql",
+          "supabase-storage.sql"
+        ],
+        "api_doc": {
+          "summary": "Records workout data and handles file uploads."
+        }
+      },
+      {
+        "name": "Admin Dashboard",
+        "description": "Admin interface for approving users and groups. Uses high-level privileges.",
+        "files": [
+          "app/dashboard/admin/page.tsx",
+          "supabase-rls.sql"
+        ],
+        "api_doc": {
+          "summary": "Admin control panel."
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,61 @@
+{
+    "tech_stack": [
+        "TypeScript",
+        "Next.js",
+        "Supabase",
+        "PostgreSQL",
+        "Mantine UI"
+    ],
+    "features": [
+        {
+            "name": "Authentication & Authorization",
+            "description": "User signup, login, and automatic approval for first user (Super Admin). Includes RLS policies and Triggers.",
+            "files": [
+                "app/signup/page.tsx",
+                "app/login/page.tsx",
+                "lib/supabase/middleware.ts",
+                "supabase-schema.sql",
+                "supabase-rls.sql"
+            ],
+            "api_doc": {
+                "summary": "Handles user authentication and role assignment via Triggers."
+            }
+        },
+        {
+            "name": "Group Management",
+            "description": "Group creation, invite code generation, joining groups, and approval workflows. Includes 'add_owner_to_group' trigger.",
+            "files": [
+                "app/dashboard/groups/page.tsx",
+                "supabase-schema.sql",
+                "supabase-rls.sql"
+            ],
+            "api_doc": {
+                "summary": "Manages group lifecycle and membership."
+            }
+        },
+        {
+            "name": "Workout Logging",
+            "description": "Creating workout records with dynamic fields and image uploads. Enforces data integrity.",
+            "files": [
+                "app/dashboard/workouts/new/page.tsx",
+                "app/dashboard/workouts/[id]/page.tsx",
+                "supabase-schema.sql",
+                "supabase-storage.sql"
+            ],
+            "api_doc": {
+                "summary": "Records workout data and handles file uploads."
+            }
+        },
+        {
+            "name": "Admin Dashboard",
+            "description": "Admin interface for approving users and groups. Uses high-level privileges.",
+            "files": [
+                "app/dashboard/admin/page.tsx",
+                "supabase-rls.sql"
+            ],
+            "api_doc": {
+                "summary": "Admin control panel."
+            }
+        }
+    ]
+}

@@ -1,0 +1,19 @@
+{
+  "status": "commited",
+  "type": "backend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:3000",
+  "backendAuthType": "basic token",
+  "backendUsername": "tomato0924@gmail.com",
+  "backendPassword": "111111",
+  "executionArgs": {
+    "projectName": "workout_mate",
+    "projectPath": "c:\\Users\\tomat\\projects\\workout_mate",
+    "testIds": [],
+    "additionalInstruction": "Focus on the following critical debug areas:\n1. Authentication: Test for race conditions when the first user signs up (ensure they become super_admin). Verify RLS blocks 'pending' users from accessing dashboard data.\n2. Group Management: Verify 'add_owner_to_group' trigger works (owner must be a member). Test unique invite code constraints. Verify RLS prevents non-members from viewing private group posts.\n3. Workout Logging: Test data integrity for specific workout types (e.g., swolf only for swimming). Verify storage upload policies (authenticated only).\n4. Admin Features: specific tests for admin RLS policies (ensure only admins can see specific data). Test approval status updates take immediate effect.",
+    "envs": {
+      "API_KEY": "sk-user-9Yqn_WG5LC0iQWrncaSAluDviSbHk3HBM8R0piaUmJpfC9VPDxreNyXd2_N5QSyksOqytR77yD5cnEEWgijaw-GKUp6gwDtK6NIm1Pozy0eMJ3mJ5uNqQrzvAu2PuD7Gof0"
+    }
+  },
+  "proxy": "http://fd07e156-3923-4b77-af90-0c9fc2eaf93f:VAuhu9DoGSrGvE0FVdR5R3gOjpmHXNNj@tun.testsprite.com:8080"
+}

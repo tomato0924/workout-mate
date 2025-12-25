@@ -1,0 +1,27 @@
+[
+  {
+    "id": "TC001",
+    "title": "user signup automatic super admin assignment",
+    "description": "Test the user signup API to verify that the first user who signs up is automatically approved and assigned the super admin role in the database."
+  },
+  {
+    "id": "TC002",
+    "title": "user login access restriction for pending users",
+    "description": "Test the user login API to ensure that users with pending approval status are restricted from accessing approved-user data due to RLS policies."
+  },
+  {
+    "id": "TC003",
+    "title": "group creation owner membership and invite code uniqueness",
+    "description": "Test the group creation API to verify that the group owner is automatically added as a member via database trigger and that the invite code generated is unique and enforced by constraints."
+  },
+  {
+    "id": "TC004",
+    "title": "workout logging required fields and image upload authorization",
+    "description": "Test the workout logging API to ensure that required fields per sport type are enforced at the database level and that image uploads are stored securely with proper authorization and path structure."
+  },
+  {
+    "id": "TC005",
+    "title": "admin dashboard user and group approval actions",
+    "description": "Test the admin dashboard API to verify that admins can view pending users and groups, approve or reject them, and that these actions immediately update user roles and access permissions."
+  }
+]
