@@ -59,6 +59,10 @@ export default function GroupDetailPage() {
     const [members, setMembers] = useState<UserProfile[]>([]);
     const [workouts, setWorkouts] = useState<Workout[]>([]);
 
+    // Detail Modal State
+    const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+    const [detailModalOpen, setDetailModalOpen] = useState(false);
+
     // Admin Modal State
     const [adminModalOpen, setAdminModalOpen] = useState(false);
     const [currentUser, setCurrentUser] = useState<any>(null);
