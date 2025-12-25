@@ -140,11 +140,13 @@ export default function GroupsPage() {
                 return;
             }
 
+            const targetGroup = group as GroupType;
+
             // Check if already a member
             const { data: existing } = await supabase
                 .from('group_members')
                 .select('*')
-                .eq('group_id', group.id)
+                .eq('group_id', targetGroup.id)
                 .eq('user_id', user.id)
                 .single();
 
@@ -160,7 +162,7 @@ export default function GroupsPage() {
 
             // Join group
             const { error } = await supabase.from('group_members').insert({
-                group_id: group.id,
+                group_id: targetGroup.id,
                 user_id: user.id,
             });
 
