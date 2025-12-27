@@ -47,7 +47,7 @@ export function AdminGroups() {
             invite_code: '',
         },
         validate: {
-            name: (value) => (value ? null : '그룹명을 입력하세요'),
+            name: (value) => (value ? null : '크루명을 입력하세요'),
             owner_id: (value) => (value ? null : '대표자를 선택하세요'),
             invite_code: (value) => (value ? null : '초대 코드를 입력하세요'),
         },
@@ -73,7 +73,7 @@ export function AdminGroups() {
             if (data) setGroups(data);
         } catch (error) {
             console.error(error);
-            notifications.show({ message: '그룹 로드 실패', color: 'red' });
+            notifications.show({ message: '크루 로드 실패', color: 'red' });
         } finally {
             setLoading(false);
         }
@@ -88,7 +88,7 @@ export function AdminGroups() {
         try {
             const { error } = await supabase.from('groups').update({ approval_status: status }).eq('id', groupId);
             if (error) throw error;
-            notifications.show({ message: `그룹이 ${status === 'approved' ? '승인' : '거절'}되었습니다`, color: 'green' });
+            notifications.show({ message: `크루가 ${status === 'approved' ? '승인' : '거절'}되었습니다`, color: 'green' });
             loadGroups();
         } catch (error) {
             notifications.show({ message: '처리 중 오류', color: 'red' });
@@ -106,7 +106,7 @@ export function AdminGroups() {
             });
 
             if (error) throw error;
-            notifications.show({ message: '그룹이 생성되었습니다', color: 'green' });
+            notifications.show({ message: '크루가 생성되었습니다', color: 'green' });
             closeCreate();
             createForm.reset();
             loadGroups();
@@ -138,14 +138,14 @@ export function AdminGroups() {
         <Stack gap="md">
             <Paper shadow="sm" radius="md" p="md" withBorder>
                 <Group justify="space-between" mb="md">
-                    <Text size="lg" fw={700}>그룹 관리</Text>
+                    <Text size="lg" fw={700}>크루 관리</Text>
                     <Button
                         leftSection={<IconPlus size={16} />}
                         onClick={openCreate}
                         variant="filled"
                         color="blue"
                     >
-                        그룹 생성
+                        크루 생성
                     </Button>
                 </Group>
 
@@ -155,7 +155,7 @@ export function AdminGroups() {
                         <Table verticalSpacing="sm">
                             <Table.Thead>
                                 <Table.Tr>
-                                    <Table.Th>그룹명</Table.Th>
+                                    <Table.Th>크루명</Table.Th>
                                     <Table.Th>대표자</Table.Th>
                                     <Table.Th>초대코드</Table.Th>
                                     <Table.Th>멤버</Table.Th>
@@ -245,10 +245,10 @@ export function AdminGroups() {
 
 
             {/* Create Group Modal */}
-            <Modal opened={createOpened} onClose={closeCreate} title="새 그룹 생성 (관리자)">
+            <Modal opened={createOpened} onClose={closeCreate} title="새 크루 생성 (관리자)">
                 <form onSubmit={createForm.onSubmit(handleCreateGroup)}>
                     <Stack>
-                        <TextInput label="그룹명" required {...createForm.getInputProps('name')} />
+                        <TextInput label="크루명" required {...createForm.getInputProps('name')} />
                         <Textarea label="설명" {...createForm.getInputProps('description')} />
                         <TextInput label="초대 코드" required {...createForm.getInputProps('invite_code')} />
                         <Select
@@ -257,15 +257,15 @@ export function AdminGroups() {
                             data={users.map(u => ({ value: u.id, label: `${u.name} (${u.nickname})` }))}
                             {...createForm.getInputProps('owner_id')}
                         />
-                        <Button type="submit" fullWidth mt="md">그룹 생성</Button>
+                        <Button type="submit" fullWidth mt="md">크루 생성</Button>
                     </Stack>
                 </form>
             </Modal>
 
             {/* Change Owner Modal */}
-            <Modal opened={assignOpened} onClose={closeAssign} title="그룹 대표자 변경">
+            <Modal opened={assignOpened} onClose={closeAssign} title="크루 대표자 변경">
                 <Stack>
-                    <Text size="sm">그룹 <b>{selectedGroup?.name}</b>의 새로운 리더를 선택하세요.</Text>
+                    <Text size="sm">크루 <b>{selectedGroup?.name}</b>의 새로운 리더를 선택하세요.</Text>
                     <Select
                         label="새 대표자"
                         data={users.map(u => ({ value: u.id, label: `${u.name} (${u.nickname})` }))}

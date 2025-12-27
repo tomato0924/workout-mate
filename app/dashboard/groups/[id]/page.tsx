@@ -90,16 +90,16 @@ export default function GroupDetailPage() {
             if (error) throw error;
 
             setGroup({ ...group, name: groupName, description: groupDesc });
-            notifications.show({ title: '성공', message: '그룹 정보가 수정되었습니다', color: 'green' });
+            notifications.show({ title: '성공', message: '크루 정보가 수정되었습니다', color: 'green' });
             setAdminModalOpen(false);
         } catch (error) {
             console.error('Update group error:', error);
-            notifications.show({ title: '오류', message: '그룹 정보 수정 실패', color: 'red' });
+            notifications.show({ title: '오류', message: '크루 정보 수정 실패', color: 'red' });
         }
     };
 
     const handleTransferOwnership = async (newOwnerId: string, newOwnerName: string) => {
-        if (!confirm(`${newOwnerName}님에게 그룹 리더 권한을 양도하시겠습니까? 이 작업은 되돌릴 수 없습니다.`)) return;
+        if (!confirm(`${newOwnerName}님에게 크루 리더 권한을 양도하시겠습니까? 이 작업은 되돌릴 수 없습니다.`)) return;
 
         try {
             const { error } = await supabase
@@ -276,7 +276,7 @@ export default function GroupDetailPage() {
     }
 
     if (!group) {
-        return <Container><Text>그룹을 찾을 수 없습니다.</Text></Container>;
+        return <Container><Text>크루을 찾을 수 없습니다.</Text></Container>;
     }
 
     return (
@@ -293,7 +293,7 @@ export default function GroupDetailPage() {
                             leftSection={<IconSettings size={16} />}
                             onClick={() => setAdminModalOpen(true)}
                         >
-                            그룹 관리
+                            크루 관리
                         </Button>
                     )}
                 </Group>
@@ -447,7 +447,7 @@ export default function GroupDetailPage() {
             <Modal
                 opened={adminModalOpen}
                 onClose={() => setAdminModalOpen(false)}
-                title="그룹 관리"
+                title="크루 관리"
                 size="lg"
             >
                 <Tabs value={activeAdminTab} onChange={(v) => setActiveAdminTab(v as 'info' | 'members')}>
@@ -459,12 +459,12 @@ export default function GroupDetailPage() {
                     <Tabs.Panel value="info">
                         <Stack>
                             <TextInput
-                                label="그룹 이름"
+                                label="크루 이름"
                                 value={groupName}
                                 onChange={(e) => setGroupName(e.currentTarget.value)}
                             />
                             <Textarea
-                                label="그룹 설명"
+                                label="크루 설명"
                                 value={groupDesc}
                                 onChange={(e) => setGroupDesc(e.currentTarget.value)}
                                 minRows={3}
@@ -477,7 +477,7 @@ export default function GroupDetailPage() {
 
                     <Tabs.Panel value="members">
                         <Text size="sm" c="dimmed" mb="md">
-                            리더 권한을 다른 멤버에게 양도할 수 있습니다. 권한을 양도하면 더 이상 이 그룹의 설정을 변경할 수 없습니다.
+                            리더 권한을 다른 멤버에게 양도할 수 있습니다. 권한을 양도하면 더 이상 이 크루의 설정을 변경할 수 없습니다.
                         </Text>
                         <Table>
                             <Table.Thead>

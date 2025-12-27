@@ -20,7 +20,7 @@ export default function AdminPage() {
                         사용자 관리
                     </Tabs.Tab>
                     <Tabs.Tab value="groups" leftSection={<IconBuildingCommunity size={16} />}>
-                        그룹 관리
+                        크루 관리
                     </Tabs.Tab>
                 </Tabs.List>
 

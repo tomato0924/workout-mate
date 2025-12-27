@@ -11,6 +11,7 @@ export interface UserProfile {
     phone: string;
     role: UserRole;
     approval_status: ApprovalStatus;
+    avatar_url?: string | null;
     created_at: string;
 }
 

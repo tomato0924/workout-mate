@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { AppShell, Burger, Group, Title, NavLink, Avatar, Menu, ActionIcon, Text } from '@mantine/core';
-import { useDisclosure } from '@mantine/hooks';
+import { AppShell, Group, Title, Avatar, Menu, ActionIcon, Container, Button, Text, UnstyledButton } from '@mantine/core';
 import {
     IconHome,
     IconUsers,
@@ -14,9 +13,9 @@ import {
 } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
 import type { UserProfile } from '@/types';
+import Link from 'next/link';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-    const [opened, { toggle, close }] = useDisclosure();
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const router = useRouter();
     const pathname = usePathname();
@@ -65,97 +64,111 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin';
 
-    const handleNavigation = (path: string) => {
-        router.push(path);
-        close();
+    // Helper to check active state
+    const isActive = (path: string) => {
+        if (path === '/dashboard' && pathname === '/dashboard') return true;
+        if (path !== '/dashboard' && pathname.startsWith(path)) return true;
+        return false;
     };
 
     return (
         <AppShell
             header={{ height: 60 }}
-            navbar={{
-                width: 250,
-                breakpoint: 'sm',
-                collapsed: { mobile: !opened },
-            }}
             padding="md"
         >
             <AppShell.Header>
-                <Group h="100%" px="md" justify="space-between">
-                    <Group>
-                        <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
-                        <IconRun size={28} />
-                        <Title order={3}>Workout Mate</Title>
-                    </Group>
+                <Container size="lg" h="100%">
+                    <Group h="100%" justify="space-between">
+                        <Group gap="xl">
+                            {/* Logo */}
+                            <Link href="/dashboard" style={{ textDecoration: 'none', color: 'inherit' }}>
+                                <Group gap="xs">
+                                    <IconRun size={28} color="#228be6" />
+                                    <Title order={3} visibleFrom="xs">Workout Mate</Title>
+                                </Group>
+                            </Link>
 
-                    {profile && (
-                        <Menu shadow="md" width={200}>
-                            <Menu.Target>
-                                <ActionIcon variant="subtle" size="lg">
-                                    <Avatar size="sm" radius="xl" color="blue">
-                                        {profile.nickname.charAt(0).toUpperCase()}
-                                    </Avatar>
-                                </ActionIcon>
-                            </Menu.Target>
-
-                            <Menu.Dropdown>
-                                <Menu.Label>{profile.nickname}</Menu.Label>
-                                <Menu.Item leftSection={<IconUser size={14} />} onClick={() => handleNavigation('/dashboard/profile')}>
-                                    프로필
-                                </Menu.Item>
-                                <Menu.Divider />
-                                <Menu.Item
-                                    color="red"
-                                    leftSection={<IconLogout size={14} />}
-                                    onClick={handleLogout}
+                            {/* Main Navigation */}
+                            <Group gap="xs">
+                                <Button
+                                    component={Link}
+                                    href="/dashboard"
+                                    variant={isActive('/dashboard') ? 'light' : 'subtle'}
+                                    color="blue"
+                                    leftSection={<IconHome size={20} />}
+                                    size="sm"
                                 >
-                                    로그아웃
-                                </Menu.Item>
-                            </Menu.Dropdown>
-                        </Menu>
-                    )}
-                </Group>
+                                    피드
+                                </Button>
+                                <Button
+                                    component={Link}
+                                    href="/dashboard/groups"
+                                    variant={isActive('/dashboard/groups') ? 'light' : 'subtle'}
+                                    color="blue"
+                                    leftSection={<IconUsers size={20} />}
+                                    size="sm"
+                                >
+                                    크루
+                                </Button>
+                            </Group>
+                        </Group>
+
+                        {/* User Menu */}
+                        {profile && (
+                            <Menu shadow="md" width={200} position="bottom-end">
+                                <Menu.Target>
+                                    <UnstyledButton>
+                                        <Group gap="xs">
+                                            <Avatar size="sm" radius="xl" color="blue" src={profile.avatar_url} name={profile.nickname}>
+                                                {profile.nickname.charAt(0).toUpperCase()}
+                                            </Avatar>
+                                            <Text size="sm" fw={500} visibleFrom="xs">{profile.nickname}</Text>
+                                        </Group>
+                                    </UnstyledButton>
+                                </Menu.Target>
+
+                                <Menu.Dropdown>
+                                    <Menu.Label>내 계정</Menu.Label>
+                                    <Menu.Item
+                                        leftSection={<IconUser size={14} />}
+                                        component={Link}
+                                        href="/dashboard/profile"
+                                    >
+                                        내 정보
+                                    </Menu.Item>
+
+                                    {isAdmin && (
+                                        <Menu.Item
+                                            leftSection={<IconShieldCheck size={14} />}
+                                            component={Link}
+                                            href="/dashboard/admin"
+                                            color="grape"
+                                            fw={500}
+                                        >
+                                            관리자
+                                        </Menu.Item>
+                                    )}
+
+                                    <Menu.Divider />
+                                    <Menu.Item
+                                        color="red"
+                                        leftSection={<IconLogout size={14} />}
+                                        onClick={handleLogout}
+                                    >
+                                        로그아웃
+                                    </Menu.Item>
+                                </Menu.Dropdown>
+                            </Menu>
+                        )}
+                    </Group>
+                </Container>
             </AppShell.Header>
 
-            <AppShell.Navbar p="md">
-                <NavLink
-                    label="대시보드"
-                    leftSection={<IconHome size={20} />}
-                    onClick={() => handleNavigation('/dashboard')}
-                    active={pathname === '/dashboard'}
-                />
-                <NavLink
-                    label="운동 기록"
-                    leftSection={<IconRun size={20} />}
-                    onClick={() => handleNavigation('/dashboard/workouts/new')}
-                />
-                <NavLink
-                    label="그룹"
-                    leftSection={<IconUsers size={20} />}
-                    onClick={() => handleNavigation('/dashboard/groups')}
-                    active={pathname.startsWith('/dashboard/groups')}
-                />
-                <NavLink
-                    label="프로필"
-                    leftSection={<IconUser size={20} />}
-                    onClick={() => handleNavigation('/dashboard/profile')}
-                    active={pathname === '/dashboard/profile'}
-                />
-
-                {isAdmin && (
-                    <>
-                        <NavLink
-                            label="관리자"
-                            leftSection={<IconShieldCheck size={20} />}
-                            onClick={() => handleNavigation('/dashboard/admin')}
-                            active={pathname.startsWith('/dashboard/admin')}
-                            mt="md"
-                        />
-                    </>
-                )}
-            </AppShell.Navbar>
-
-            <AppShell.Main>{children}</AppShell.Main>
+            <AppShell.Main>
+                <Container size="lg" p={0}>
+                    {children}
+                </Container>
+            </AppShell.Main>
         </AppShell>
     );
 }

@@ -40,7 +40,7 @@ export default function GroupsPage() {
             description: '',
         },
         validate: {
-            name: (value) => (value.trim() ? null : '그룹 이름을 입력해주세요'),
+            name: (value) => (value.trim() ? null : '크루 이름을 입력해주세요'),
         },
     });
 
@@ -102,7 +102,7 @@ export default function GroupsPage() {
             if (error) throw error;
 
             notifications.show({
-                title: '그룹 생성 요청',
+                title: '크루 생성 요청',
                 message: '관리자 승인 대기 중입니다',
                 color: 'blue',
             });
@@ -113,7 +113,7 @@ export default function GroupsPage() {
             console.error('Create group error:', error);
             notifications.show({
                 title: '오류',
-                message: '그룹 생성에 실패했습니다',
+                message: '크루 생성에 실패했습니다',
                 color: 'red',
             });
         }
@@ -153,7 +153,7 @@ export default function GroupsPage() {
             if (existing) {
                 notifications.show({
                     title: '알림',
-                    message: '이미 가입된 그룹입니다',
+                    message: '이미 가입된 크루입니다',
                     color: 'yellow',
                 });
                 closeJoin();
@@ -170,7 +170,7 @@ export default function GroupsPage() {
 
             notifications.show({
                 title: '성공',
-                message: '그룹에 가입했습니다',
+                message: '크루에 가입했습니다',
                 color: 'green',
             });
 
@@ -181,7 +181,7 @@ export default function GroupsPage() {
             console.error('Join group error:', error);
             notifications.show({
                 title: '오류',
-                message: '그룹 가입에 실패했습니다',
+                message: '크루 가입에 실패했습니다',
                 color: 'red',
             });
         }
@@ -199,13 +199,13 @@ export default function GroupsPage() {
         <Container size="md">
             <Stack>
                 <Group justify="space-between">
-                    <Title order={2}>내 그룹</Title>
+                    <Title order={2}>내 크루</Title>
                     <Group>
                         <Button variant="light" onClick={openJoin}>
-                            그룹 참여
+                            크루 참여
                         </Button>
                         <Button leftSection={<IconPlus size={16} />} onClick={openCreate}>
-                            그룹 생성
+                            크루 생성
                         </Button>
                     </Group>
                 </Group>
@@ -213,7 +213,7 @@ export default function GroupsPage() {
                 {groups.length === 0 ? (
                     <Card withBorder p="xl">
                         <Text c="dimmed" ta="center">
-                            가입된 그룹이 없습니다. 그룹을 생성하거나 참여해보세요!
+                            가입된 크루이 없습니다. 크루을 생성하거나 참여해보세요!
                         </Text>
                     </Card>
                 ) : (
@@ -253,17 +253,17 @@ export default function GroupsPage() {
                 )}
             </Stack>
 
-            <Modal opened={createOpened} onClose={closeCreate} title="새 그룹 만들기">
+            <Modal opened={createOpened} onClose={closeCreate} title="새 크루 만들기">
                 <form onSubmit={createForm.onSubmit(handleCreateGroup)}>
                     <Stack>
                         <TextInput
-                            label="그룹  이름"
+                            label="크루  이름"
                             required
                             {...createForm.getInputProps('name')}
                         />
                         <Textarea
-                            label="그룹 설명"
-                            placeholder="그룹에 대해 설명해주세요"
+                            label="크루 설명"
+                            placeholder="크루에 대해 설명해주세요"
                             {...createForm.getInputProps('description')}
                         />
                         <Button type="submit">생성하기</Button>
@@ -271,7 +271,7 @@ export default function GroupsPage() {
                 </form>
             </Modal>
 
-            <Modal opened={joinOpened} onClose={closeJoin} title="그룹 참여하기">
+            <Modal opened={joinOpened} onClose={closeJoin} title="크루 참여하기">
                 <form onSubmit={joinForm.onSubmit(handleJoinGroup)}>
                     <Stack>
                         <TextInput

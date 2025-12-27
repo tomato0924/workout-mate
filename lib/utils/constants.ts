@@ -23,7 +23,7 @@ export const APPROVAL_STATUSES: { value: ApprovalStatus; label: string }[] = [
 export const SHARING_TYPES: { value: SharingType; label: string }[] = [
     { value: 'public', label: '전체 공개' },
     { value: 'private', label: '나만 보기' },
-    { value: 'group', label: '특정 그룹' },
+    { value: 'group', label: '특정 크루' },
 ];
 
 export const REACTION_EMOJIS = ['👍', '💪', '🔥', '🎉', '❤️', '👏', '⭐', '🏆'];

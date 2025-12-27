@@ -85,7 +85,7 @@ export function AdminStats() {
             <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="lg">
                 <StatsCard title="전체 사용자" value={stats.totalUsers} icon={IconUser} color="blue" diff={12} />
                 <StatsCard title="활동 사용자" value={stats.activeUsers} icon={IconActivity} color="green" diff={5} />
-                <StatsCard title="전체 그룹" value={stats.totalGroups} icon={IconUsers} color="violet" />
+                <StatsCard title="전체 크루" value={stats.totalGroups} icon={IconUsers} color="violet" />
                 <StatsCard title="누적 운동 기록" value={stats.totalWorkouts} icon={IconRun} color="orange" diff={25} />
             </SimpleGrid>
 
