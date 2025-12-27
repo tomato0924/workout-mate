@@ -27,18 +27,14 @@ export default function SignupPage() {
             email: '',
             password: '',
             confirmPassword: '',
-            name: '',
             nickname: '',
-            phone: '',
         },
         validate: {
             email: (value) => (/^\S+@\S+$/.test(value) ? null : '올바른 이메일을 입력해주세요'),
             password: (value) => (value.length >= 6 ? null : '비밀번호는 최소 6자 이상이어야 합니다'),
             confirmPassword: (value, values) =>
                 value === values.password ? null : '비밀번호가 일치하지 않습니다',
-            name: (value) => (value.trim().length > 0 ? null : '이름을 입력해주세요'),
             nickname: (value) => (value.trim().length > 0 ? null : '닉네임을 입력해주세요'),
-            phone: (value) => (value.trim().length > 0 ? null : '연락처를 입력해주세요'),
         },
     });
 
