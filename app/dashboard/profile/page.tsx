@@ -161,7 +161,6 @@ export default function ProfilePage() {
     const editForm = useForm({
         initialValues: {
             nickname: '',
-            phone: '',
         },
         validate: {
             nickname: (val) => (val.length < 2 ? '닉네임은 2글자 이상이어야 합니다' : null),
@@ -172,7 +171,6 @@ export default function ProfilePage() {
         if (profile) {
             editForm.setValues({
                 nickname: profile.nickname || '',
-                phone: profile.phone || '',
             });
         }
     }, [profile]);
@@ -183,7 +181,7 @@ export default function ProfilePage() {
         try {
             const { error } = await supabase
                 .from('user_profiles')
-                .update({ nickname: values.nickname, phone: values.phone })
+                .update({ nickname: values.nickname })
                 .eq('id', profile.id);
 
             if (error) throw error;
@@ -273,7 +271,6 @@ export default function ProfilePage() {
 
                     <div style={{ textAlign: 'center' }}>
                         <Title order={3}>{profile.nickname}</Title>
-                        <Text c="dimmed" size="sm">{profile.name}</Text>
                     </div>
                     <Badge color={roleBadge.color} leftSection={<IconShieldCheck size={12} />}>
                         {roleBadge.label}
@@ -287,16 +284,6 @@ export default function ProfilePage() {
                             <div>
                                 <Text size="xs" c="dimmed">이메일</Text>
                                 <Text>{profile.email}</Text>
-                            </div>
-                        </Group>
-                    </Group>
-
-                    <Group justify="space-between">
-                        <Group>
-                            <IconPhone size={20} color="gray" />
-                            <div>
-                                <Text size="xs" c="dimmed">연락처</Text>
-                                <Text>{profile.phone || '미등록'}</Text>
                             </div>
                         </Group>
                     </Group>
@@ -385,10 +372,6 @@ export default function ProfilePage() {
                             label="닉네임"
                             required
                             {...editForm.getInputProps('nickname')}
-                        />
-                        <TextInput
-                            label="연락처"
-                            {...editForm.getInputProps('phone')}
                         />
                         <Button type="submit">저장</Button>
                     </Stack>

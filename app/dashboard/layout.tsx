@@ -119,7 +119,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                 <Menu.Target>
                                     <UnstyledButton>
                                         <Group gap="xs">
-                                            <Avatar size="sm" radius="xl" color="blue" src={profile.avatar_url} name={profile.nickname}>
+                                            <Avatar size="md" radius="xl" color="blue" src={profile.avatar_url} name={profile.nickname}>
                                                 {profile.nickname.charAt(0).toUpperCase()}
                                             </Avatar>
                                             <Text size="sm" fw={500} visibleFrom="xs">{profile.nickname}</Text>

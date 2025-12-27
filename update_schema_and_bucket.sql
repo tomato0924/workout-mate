@@ -5,6 +5,12 @@ ON CONFLICT (id) DO NOTHING;
 
 -- 2. Policies for avatars bucket
 
+-- Drop existing policies to ensure idempotency
+DROP POLICY IF EXISTS "Anyone can view avatars" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can upload avatars" ON storage.objects;
+DROP POLICY IF EXISTS "Users can update own avatars" ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete own avatars" ON storage.objects;
+
 -- Public view access
 CREATE POLICY "Anyone can view avatars"
   ON storage.objects FOR SELECT

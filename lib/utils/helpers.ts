@@ -9,6 +9,10 @@ export function formatDate(date: string): string {
     return dayjs(date).format('YYYY년 MM월 DD일');
 }
 
+export function formatCompactDate(date: string): string {
+    return `'${dayjs(date).format('YY/MM/DD')}`;
+}
+
 export function formatDateTime(date: string): string {
     return dayjs(date).format('YYYY년 MM월 DD일 HH:mm');
 }

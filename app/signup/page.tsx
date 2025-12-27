@@ -82,9 +82,9 @@ export default function SignupPage() {
             const { error: profileError } = await supabase.from('user_profiles').insert({
                 id: authData.user.id,
                 email: values.email,
-                name: values.name,
+                name: '', // Removed from UI
                 nickname: values.nickname,
-                phone: values.phone,
+                phone: '', // Removed from UI
                 role: isFirstUser ? 'super_admin' : 'user',
                 approval_status: isFirstUser ? 'approved' : 'pending',
             });
@@ -149,24 +149,10 @@ export default function SignupPage() {
                         />
 
                         <TextInput
-                            label="이름"
-                            placeholder="홍길동"
-                            required
-                            {...form.getInputProps('name')}
-                        />
-
-                        <TextInput
                             label="닉네임"
                             placeholder="운동왕"
                             required
                             {...form.getInputProps('nickname')}
-                        />
-
-                        <TextInput
-                            label="연락처"
-                            placeholder="010-1234-5678"
-                            required
-                            {...form.getInputProps('phone')}
                         />
 
                         <PasswordInput

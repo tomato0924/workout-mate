@@ -4,7 +4,7 @@ import { Card, Text, Group, Avatar, Stack, Image, Box, ThemeIcon } from '@mantin
 import { useRouter } from 'next/navigation';
 import { Workout } from '@/types';
 import { formatWorkoutDuration, formatWorkoutDistance, formatWorkoutMetric } from '@/lib/utils/format';
-import { formatDate } from '@/lib/utils/helpers';
+import { formatDate, formatCompactDate } from '@/lib/utils/helpers';
 import { IconRun, IconSwimming, IconBike, IconMountain, IconWalk } from '@tabler/icons-react';
 
 interface WorkoutCardProps {
@@ -89,7 +89,7 @@ export function WorkoutCard({ workout }: WorkoutCardProps) {
                             </Text>
                         </Group>
                         <Text size="xs" c="dimmed">
-                            {formatDate(workout.workout_date)}
+                            {formatCompactDate(workout.workout_date)}
                         </Text>
                     </Group>
 
@@ -103,7 +103,7 @@ export function WorkoutCard({ workout }: WorkoutCardProps) {
                             <Text fw={700} size="sm">{formatWorkoutDuration(workout.duration_seconds)}</Text>
                         </Stack>
                         <Stack gap={0}>
-                            <Text size="xs" c="dimmed">{metric.label}</Text>
+                            <Text size="xs" c="dimmed">페이스</Text>
                             <Text fw={700} size="sm">{metric.value}</Text>
                         </Stack>
                     </Group>
