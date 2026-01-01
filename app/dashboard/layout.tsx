@@ -79,18 +79,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         >
             <AppShell.Header>
                 <Container size="lg" h="100%">
-                    <Group h="100%" justify="space-between">
-                        <Group gap="xl">
+                    <Group h="100%" justify="space-between" wrap="nowrap">
+                        <Group gap="sm" wrap="nowrap">
                             {/* Logo */}
                             <Link href="/dashboard" style={{ textDecoration: 'none', color: 'inherit' }}>
-                                <Group gap="xs">
+                                <Group gap={4} wrap="nowrap">
                                     <IconRun size={28} color="#228be6" />
                                     <Title order={3} visibleFrom="xs">Workout Mate</Title>
                                 </Group>
                             </Link>
 
                             {/* Main Navigation */}
-                            <Group gap="xs">
+                            <Group gap={4} ml="xs" wrap="nowrap">
                                 <Button
                                     component={Link}
                                     href="/dashboard"
@@ -98,8 +98,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                     color="blue"
                                     leftSection={<IconHome size={20} />}
                                     size="sm"
+                                    px="xs"
                                 >
-                                    피드
+                                    <Text span visibleFrom="xs">피드</Text>
                                 </Button>
                                 <Button
                                     component={Link}
@@ -108,62 +109,66 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                     color="blue"
                                     leftSection={<IconUsers size={20} />}
                                     size="sm"
+                                    px="xs"
                                 >
-                                    크루
+                                    <Text span visibleFrom="xs">크루</Text>
                                 </Button>
                             </Group>
                         </Group>
 
-                        {/* Notification Bell */}
-                        {profile && <NotificationBell />}
+                        {/* Right Section */}
+                        <Group gap="xs" wrap="nowrap">
+                            {/* Notification Bell */}
+                            {profile && <NotificationBell />}
 
-                        {/* User Menu */}
-                        {profile && (
-                            <Menu shadow="md" width={200} position="bottom-end">
-                                <Menu.Target>
-                                    <UnstyledButton>
-                                        <Group gap="xs">
-                                            <Avatar size="md" radius="xl" color="blue" src={profile.avatar_url} name={profile.nickname}>
-                                                {profile.nickname.charAt(0).toUpperCase()}
-                                            </Avatar>
-                                            <Text size="sm" fw={500} visibleFrom="xs">{profile.nickname}</Text>
-                                        </Group>
-                                    </UnstyledButton>
-                                </Menu.Target>
+                            {/* User Menu */}
+                            {profile && (
+                                <Menu shadow="md" width={200} position="bottom-end">
+                                    <Menu.Target>
+                                        <UnstyledButton>
+                                            <Group gap={6} wrap="nowrap">
+                                                <Avatar size="md" radius="xl" color="blue" src={profile.avatar_url} name={profile.nickname}>
+                                                    {profile.nickname.charAt(0).toUpperCase()}
+                                                </Avatar>
+                                                <Text size="sm" fw={500} visibleFrom="xs">{profile.nickname}</Text>
+                                            </Group>
+                                        </UnstyledButton>
+                                    </Menu.Target>
 
-                                <Menu.Dropdown>
-                                    <Menu.Label>내 계정</Menu.Label>
-                                    <Menu.Item
-                                        leftSection={<IconUser size={14} />}
-                                        component={Link}
-                                        href="/dashboard/profile"
-                                    >
-                                        내 정보
-                                    </Menu.Item>
-
-                                    {isAdmin && (
+                                    <Menu.Dropdown>
+                                        <Menu.Label>내 계정</Menu.Label>
                                         <Menu.Item
-                                            leftSection={<IconShieldCheck size={14} />}
+                                            leftSection={<IconUser size={14} />}
                                             component={Link}
-                                            href="/dashboard/admin"
-                                            color="grape"
-                                            fw={500}
+                                            href="/dashboard/profile"
                                         >
-                                            관리자
+                                            내 정보
                                         </Menu.Item>
-                                    )}
 
-                                    <Menu.Divider />
-                                    <Menu.Item
-                                        color="red"
-                                        leftSection={<IconLogout size={14} />}
-                                        onClick={handleLogout}
-                                    >
-                                        로그아웃
-                                    </Menu.Item>
-                                </Menu.Dropdown>
-                            </Menu>
-                        )}
+                                        {isAdmin && (
+                                            <Menu.Item
+                                                leftSection={<IconShieldCheck size={14} />}
+                                                component={Link}
+                                                href="/dashboard/admin"
+                                                color="grape"
+                                                fw={500}
+                                            >
+                                                관리자
+                                            </Menu.Item>
+                                        )}
+
+                                        <Menu.Divider />
+                                        <Menu.Item
+                                            color="red"
+                                            leftSection={<IconLogout size={14} />}
+                                            onClick={handleLogout}
+                                        >
+                                            로그아웃
+                                        </Menu.Item>
+                                    </Menu.Dropdown>
+                                </Menu>
+                            )}
+                        </Group>
                     </Group>
                 </Container>
             </AppShell.Header>
