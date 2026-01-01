@@ -75,15 +75,14 @@ export function AdminUsers() {
         if (!confirm('정말로 이 사용자를 삭제(탈퇴 처리)하시겠습니까? 복구할 수 없습니다.')) return;
 
         try {
-            // Note: Deleting from user_profiles will likely fail if it doesn't cascade to auth.users 
-            // OR if RLS prevents deletion.
-            // Ideally call an Edge Function / Admin API.
-            // But if `user_profiles` RLS allows delete, we try that.
-            // If it fails, we warn.
+            const response = await fetch(`/api/admin/users/${userId}`, {
+                method: 'DELETE',
+            });
 
-            const { error } = await supabase.from('user_profiles').delete().eq('id', userId);
-
-            if (error) throw error;
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || '삭제 실패');
+            }
 
             notifications.show({ message: '사용자가 삭제되었습니다', color: 'blue' });
             loadUsers();
@@ -91,7 +90,7 @@ export function AdminUsers() {
             console.error('Delete error:', error);
             notifications.show({
                 title: '삭제 실패',
-                message: '권한이 부족하거나 삭제할 수 없는 사용자입니다. (슈퍼관리자 기능 필요)',
+                message: error.message || '권한이 부족하거나 삭제할 수 없는 사용자입니다.',
                 color: 'red'
             });
         }

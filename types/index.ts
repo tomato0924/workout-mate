@@ -51,6 +51,7 @@ export interface Workout {
     images?: WorkoutImage[];
     reactions?: WorkoutReaction[];
     comments?: WorkoutComment[];
+    view_count?: number;
 }
 
 export interface WorkoutImage {
@@ -105,4 +106,16 @@ export interface LeaderboardEntry {
     total_duration: number;
     workout_count: number;
     rank?: number;
+}
+
+export interface Notification {
+    id: string;
+    created_at: string;
+    user_id: string;
+    actor_id: string;
+    type: 'comment' | 'reaction';
+    workout_id: string;
+    content?: string;
+    is_read: boolean;
+    actor?: UserProfile;
 }

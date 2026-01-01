@@ -13,6 +13,7 @@ import {
 } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
 import type { UserProfile } from '@/types';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import Link from 'next/link';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -112,6 +113,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                 </Button>
                             </Group>
                         </Group>
+
+                        {/* Notification Bell */}
+                        {profile && <NotificationBell />}
 
                         {/* User Menu */}
                         {profile && (

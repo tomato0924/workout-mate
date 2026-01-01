@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
     Container,
@@ -23,7 +23,7 @@ import {
 import { Carousel } from '@mantine/carousel';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconHeart, IconMessageCircle, IconArrowLeft, IconPencil, IconTrash } from '@tabler/icons-react';
+import { IconHeart, IconMessageCircle, IconArrowLeft, IconPencil, IconTrash, IconEye } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
 import type { Workout, WorkoutComment, WorkoutReaction } from '@/types';
 import { WORKOUT_TYPES, REACTION_EMOJIS } from '@/lib/utils/constants';
@@ -40,7 +40,9 @@ export default function WorkoutDetailPage() {
     const [loading, setLoading] = useState(true);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [opened, { open, close }] = useDisclosure(false);
+
     const supabase = createClient();
+    const hasViewedRef = useRef(false);
 
     const [currentUser, setCurrentUser] = useState<any>(null);
 
@@ -52,6 +54,12 @@ export default function WorkoutDetailPage() {
         try {
             const { data: { user } } = await supabase.auth.getUser();
             setCurrentUser(user);
+
+            // Increment view count (once per session/mount)
+            if (!hasViewedRef.current) {
+                await supabase.rpc('increment_workout_view_count', { workout_id: params.id });
+                hasViewedRef.current = true;
+            }
 
             const { data, error } = await supabase
                 .from('workouts')
@@ -231,7 +239,13 @@ export default function WorkoutDetailPage() {
                             <Avatar radius="xl">{workout.user?.nickname.charAt(0)}</Avatar>
                             <div>
                                 <Text fw={600}>{workout.user?.nickname}</Text>
-                                <Text size="sm" c="dimmed">{formatDate(workout.workout_date)}</Text>
+                                <Group gap={8}>
+                                    <Text size="sm" c="dimmed">{formatDate(workout.workout_date)}</Text>
+                                    <Group gap={4}>
+                                        <IconEye size={14} color="gray" />
+                                        <Text size="sm" c="dimmed">{workout.view_count || 0}</Text>
+                                    </Group>
+                                </Group>
                             </div>
                         </Group>
                         <Badge size="lg">{workoutTypeLabel}</Badge>

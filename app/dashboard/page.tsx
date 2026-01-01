@@ -30,10 +30,11 @@ export default function DashboardPage() {
                 .from('workouts')
                 .select(`
           *,
+          view_count,
           user:user_profiles(*),
           images:workout_images(*),
-          reactions:workout_reactions(count),
-          comments:workout_comments(count)
+          reactions:workout_reactions(emoji),
+          comments:workout_comments(id)
         `)
                 .order('created_at', { ascending: false })
                 .limit(20);
