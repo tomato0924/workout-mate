@@ -23,7 +23,18 @@ export interface Group {
     owner_id: string;
     approval_status: ApprovalStatus;
     created_at: string;
+    active_activity_types?: ('running' | 'swimming' | 'cycling')[];
     owner?: UserProfile;
+    goals?: GroupGoal[];
+}
+
+export interface GroupGoal {
+    id: string;
+    group_id: string;
+    activity_type: 'running' | 'swimming' | 'cycling';
+    period_type: 'weekly' | 'monthly';
+    target_distance: number;
+    created_at: string;
 }
 
 export interface GroupMember {
@@ -118,4 +129,15 @@ export interface Notification {
     content?: string;
     is_read: boolean;
     actor?: UserProfile;
+}
+
+export interface PersonalGoal {
+    id: string;
+    user_id: string;
+    activity_type: 'running' | 'swimming' | 'cycling' | 'treadmill' | 'hiking';
+    period_type: 'weekly' | 'monthly' | 'yearly';
+    target_value: number;
+    metric_type: 'distance' | 'time';
+    is_active: boolean;
+    created_at: string;
 }

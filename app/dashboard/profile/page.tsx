@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { Container, Title, Paper, Stack, Text, Group, Avatar, Badge, Button, Modal, TextInput, PasswordInput, FileButton, ActionIcon, Grid, SimpleGrid, LoadingOverlay, Divider } from '@mantine/core';
-import { IconMail, IconPhone, IconShieldCheck, IconPencil, IconCamera, IconLock, IconUpload, IconCheck } from '@tabler/icons-react';
+import { Container, Title, Paper, Stack, Text, Group, Avatar, Badge, Button, Modal, TextInput, PasswordInput, FileButton, ActionIcon, Grid, SimpleGrid, LoadingOverlay, Divider, Tabs, Switch, NumberInput, Select } from '@mantine/core';
+import { IconMail, IconPhone, IconShieldCheck, IconPencil, IconCamera, IconLock, IconUpload, IconCheck, IconTarget } from '@tabler/icons-react';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import type { UserProfile } from '@/types';
+import type { UserProfile, PersonalGoal } from '@/types';
+import { WORKOUT_TYPES } from '@/lib/utils/constants';
 
 // Categorized Avatars
 const AVATAR_CATEGORIES = {
@@ -55,6 +56,12 @@ export default function ProfilePage() {
     const [editInfoModalOpen, setEditInfoModalOpen] = useState(false);
     const [passwordModalOpen, setPasswordModalOpen] = useState(false);
 
+    // Goal State
+    const [goalModalOpen, setGoalModalOpen] = useState(false);
+    const [goals, setGoals] = useState<PersonalGoal[]>([]);
+    const [draftGoals, setDraftGoals] = useState<Record<string, { target_value: number; is_active: boolean }>>({});
+    const [activeTab, setActiveTab] = useState<string>('running');
+
     // Auth check state
     const [currentUserEmail, setCurrentUserEmail] = useState('');
 
@@ -63,7 +70,94 @@ export default function ProfilePage() {
 
     useEffect(() => {
         loadProfile();
+        loadGoals();
     }, []);
+
+    const loadGoals = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data } = await supabase
+            .from('personal_goals')
+            .select('*')
+            .eq('user_id', user.id);
+
+        if (data) setGoals(data);
+    };
+
+    const handleSaveGoals = async (type: string) => {
+        if (!profile) return;
+
+        // Find all drafts for this activity type
+        const draftedKeys = Object.keys(draftGoals).filter(k => k.startsWith(`${type}-`));
+        if (draftedKeys.length === 0) return;
+
+        setLoading(true);
+        try {
+            const updates = draftedKeys.map(async (key) => {
+                const [, period] = key.split('-');
+                const draft = draftGoals[key];
+
+                const existingGoal = goals.find(g => g.activity_type === type && g.period_type === period);
+
+                const goalData = {
+                    user_id: profile.id,
+                    activity_type: type,
+                    period_type: period,
+                    target_value: draft.target_value,
+                    metric_type: type === 'swimming' ? 'distance' : 'distance',
+                    is_active: draft.is_active
+                };
+
+                if (existingGoal) {
+                    return supabase.from('personal_goals').update(goalData).eq('id', existingGoal.id);
+                } else {
+                    return supabase.from('personal_goals').insert(goalData);
+                }
+            });
+
+            await Promise.all(updates);
+
+            notifications.show({ message: '목표가 저장되었습니다', color: 'green' });
+
+            // Clear drafts for this type
+            setDraftGoals(prev => {
+                const newState = { ...prev };
+                draftedKeys.forEach(k => delete newState[k]);
+                return newState;
+            });
+
+            loadGoals();
+        } catch (error) {
+            console.error(error);
+            notifications.show({ message: '목표 저장 실패', color: 'red' });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleTabChange = (newTab: string | null) => {
+        if (!newTab) return;
+        if (newTab === activeTab) return;
+
+        // Check for unsaved changes in current tab
+        const hasChanges = Object.keys(draftGoals).some(key => key.startsWith(`${activeTab}-`));
+
+        if (hasChanges) {
+            if (window.confirm('저장하지 않은 변경사항이 있습니다. 저장하지 않고 이동하시겠습니까?')) {
+                // Discard changes
+                setDraftGoals(prev => {
+                    const newState = { ...prev };
+                    Object.keys(newState).filter(k => k.startsWith(`${activeTab}-`)).forEach(k => delete newState[k]);
+                    return newState;
+                });
+                setActiveTab(newTab);
+            }
+            // If cancel, do nothing (stay on tab)
+        } else {
+            setActiveTab(newTab);
+        }
+    };
 
     const loadProfile = async () => {
         const { data: { user } } = await supabase.auth.getUser();
@@ -295,6 +389,15 @@ export default function ProfilePage() {
                         <Button variant="outline" color="gray" onClick={() => setPasswordModalOpen(true)}>비밀번호 변경</Button>
                     </Group>
 
+                    <Button
+                        variant="filled"
+                        color="teal"
+                        leftSection={<IconTarget size={20} />}
+                        onClick={() => setGoalModalOpen(true)}
+                    >
+                        운동 목표 설정
+                    </Button>
+
                     <Text size="xs" c="dimmed" ta="center" mt="md">
                         가입일: {new Date(profile.created_at).toLocaleDateString('ko-KR')}
                     </Text>
@@ -398,6 +501,84 @@ export default function ProfilePage() {
                     </Stack>
                 </form>
             </Modal>
-        </Container>
+
+            {/* Goal Setting Modal */}
+            <Modal opened={goalModalOpen} onClose={() => setGoalModalOpen(false)} title="운동 목표 설정" size="lg">
+                <Tabs value={activeTab} onChange={handleTabChange}>
+                    <Tabs.List mb="md">
+                        <Tabs.Tab value="running">달리기</Tabs.Tab>
+                        <Tabs.Tab value="swimming">수영</Tabs.Tab>
+                        <Tabs.Tab value="cycling">자전거</Tabs.Tab>
+                        <Tabs.Tab value="treadmill">러닝머신</Tabs.Tab>
+                        <Tabs.Tab value="hiking">등산</Tabs.Tab>
+                    </Tabs.List>
+
+                    {['running', 'swimming', 'cycling', 'treadmill', 'hiking'].map((type) => (
+                        <Tabs.Panel key={type} value={type}>
+                            <Stack>
+                                {['weekly', 'monthly', 'yearly'].map((period) => {
+                                    const currentGoal = goals.find(g => g.activity_type === type && g.period_type === period);
+                                    const draftKey = `${type}-${period}`;
+                                    const draft = draftGoals[draftKey];
+
+                                    const displayValue = draft ? draft.target_value : (currentGoal?.target_value ?? 0);
+                                    const displayActive = draft ? draft.is_active : (currentGoal?.is_active ?? false);
+
+                                    const periodLabel = period === 'weekly' ? '주간 목표' : period === 'monthly' ? '월간 목표' : '연간 목표';
+                                    const unit = type === 'swimming' ? 'm' : 'km';
+
+                                    return (
+                                        <Paper key={period} withBorder p="sm" radius="md">
+                                            <Group justify="space-between" mb="xs">
+                                                <Text fw={500}>{periodLabel}</Text>
+                                                <Switch
+                                                    label="활성화"
+                                                    checked={displayActive}
+                                                    onChange={(event) => {
+                                                        const isChecked = event.currentTarget.checked;
+                                                        setDraftGoals(prev => ({
+                                                            ...prev,
+                                                            [draftKey]: {
+                                                                target_value: displayValue,
+                                                                is_active: isChecked
+                                                            }
+                                                        }));
+                                                    }}
+                                                />
+                                            </Group>
+                                            <NumberInput
+                                                label={`목표 거리 (${unit})`}
+                                                placeholder="0"
+                                                value={displayValue}
+                                                onChange={(val) => {
+                                                    setDraftGoals(prev => ({
+                                                        ...prev,
+                                                        [draftKey]: {
+                                                            target_value: Number(val),
+                                                            is_active: displayActive
+                                                        }
+                                                    }));
+                                                }}
+                                                suffix={` ${unit}`}
+                                                min={0}
+                                            />
+                                        </Paper>
+                                    );
+                                })}
+                                <Button
+                                    fullWidth
+                                    mt="md"
+                                    color="blue"
+                                    onClick={() => handleSaveGoals(type)}
+                                    disabled={!Object.keys(draftGoals).some(k => k.startsWith(`${type}-`))}
+                                >
+                                    저장하기 ({Object.keys(draftGoals).filter(k => k.startsWith(`${type}-`)).length}개 변경사항)
+                                </Button>
+                            </Stack>
+                        </Tabs.Panel>
+                    ))}
+                </Tabs>
+            </Modal>
+        </Container >
     );
 }
