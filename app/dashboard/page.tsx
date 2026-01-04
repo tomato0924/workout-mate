@@ -15,7 +15,7 @@ export default function DashboardPage() {
                 <Tabs defaultValue="my_workout" keepMounted={false}>
                     <Tabs.List>
                         <Tabs.Tab value="my_workout" leftSection={<IconChartBar size={16} />}>
-                            내 운동 (차트/목표)
+                            내 운동
                         </Tabs.Tab>
                         <Tabs.Tab value="feed" leftSection={<IconList size={16} />}>
                             전체 운동 피드

@@ -275,10 +275,9 @@ export function MyWorkoutTab() {
                 <Group justify="space-between" align="start">
                     <Stack gap="xs" style={{ flex: 1 }}>
                         <Text fw={500} size="sm" c="dimmed">운동 종목 선택</Text>
-                        <SegmentedControl
-                            fullWidth
+                        <Select
                             value={activityType}
-                            onChange={setActivityType}
+                            onChange={(v) => v && setActivityType(v)}
                             data={[
                                 { label: '달리기', value: 'running' },
                                 { label: '수영', value: 'swimming' },
@@ -286,6 +285,7 @@ export function MyWorkoutTab() {
                                 { label: '러닝머신', value: 'treadmill' },
                                 { label: '등산', value: 'hiking' },
                             ]}
+                            allowDeselect={false}
                         />
                     </Stack>
                     <Button
@@ -381,8 +381,13 @@ export function MyWorkoutTab() {
                                     />
                                     <Tooltip
                                         formatter={(value: any, name: any, props: any) => {
-                                            return [`${props.payload.actual.toLocaleString()} / ${props.payload.target.toLocaleString()} ${props.payload.unit}`, `${name} 달성률`];
+                                            // 'name' comes from chartData.name (e.g. '주간', '월간')
+                                            return [
+                                                `${props.payload.actual.toLocaleString()} / ${props.payload.target.toLocaleString()} ${props.payload.unit}`,
+                                                `${name} 달성률 (${props.payload.pv}%)`
+                                            ];
                                         }}
+                                        labelStyle={{ display: 'none' }} // Hide default label since we custom format
                                     />
                                 </RadialBarChart >
                                 <div style={{
