@@ -24,6 +24,7 @@ import { IconX, IconUpload } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
 import { WORKOUT_TYPES, SHARING_TYPES, MAX_WORKOUT_IMAGES } from '@/lib/utils/constants';
 import type { WorkoutType } from '@/types';
+import dayjs from 'dayjs';
 
 function NewWorkoutContent() {
     const router = useRouter();
@@ -98,7 +99,8 @@ function NewWorkoutContent() {
             const payload = {
                 user_id: user.id,
                 workout_type: values.workout_type,
-                workout_date: new Date(values.workout_date).toISOString().split('T')[0],
+                // Fix: Use dayjs to format date as YYYY-MM-DD in local time to avoid timezone shifts
+                workout_date: dayjs(values.workout_date).format('YYYY-MM-DD'),
                 duration_seconds: durationSeconds,
                 distance_meters: distanceMeters,
                 avg_heart_rate: values.avg_heart_rate || null,
