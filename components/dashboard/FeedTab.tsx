@@ -12,7 +12,7 @@ import dayjs from 'dayjs';
 export function FeedTab() {
     const [workouts, setWorkouts] = useState<Workout[]>([]);
     const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState<string>('my');
+    const [filter, setFilter] = useState<string>('public');
     const [dateRange, setDateRange] = useState<string>('1month');
     const router = useRouter();
     const supabase = createClient();

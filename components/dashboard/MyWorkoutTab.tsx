@@ -9,7 +9,7 @@ import { createClient } from '@/lib/supabase/client';
 import type { Workout, PersonalGoal } from '@/types';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, ReferenceLine, RadialBarChart, RadialBar, PolarAngleAxis } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, ReferenceLine, RadialBarChart, RadialBar, PolarAngleAxis, LabelList } from 'recharts';
 
 dayjs.extend(isoWeek);
 
@@ -335,12 +335,14 @@ export function MyWorkoutTab() {
                         <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} />
                             <XAxis dataKey="label" fontSize={12} tickMargin={10} />
-                            <YAxis fontSize={12} unit={unitLabel} />
-                            <Tooltip
-                                formatter={(value: number | undefined) => [value ? `${value} ${unitLabel} ` : '0', metric === 'distance' ? '거리' : '시간']}
-                                labelStyle={{ color: 'black' }}
-                            />
+                            <YAxis hide />
                             <Bar dataKey="value" fill="#228be6" radius={[4, 4, 0, 0]}>
+                                <LabelList
+                                    dataKey="value"
+                                    position="top"
+                                    formatter={(value: any) => value > 0 ? `${value}${unitLabel}` : ''}
+                                    style={{ fontSize: 12, fill: '#666' }}
+                                />
                                 <Cell fill="#228be6" />
                             </Bar>
                         </BarChart>
@@ -379,16 +381,7 @@ export function MyWorkoutTab() {
                                         cornerRadius={10}
                                         label={false}
                                     />
-                                    <Tooltip
-                                        formatter={(value: any, name: any, props: any) => {
-                                            // 'name' comes from chartData.name (e.g. '주간', '월간')
-                                            return [
-                                                `${props.payload.actual.toLocaleString()} / ${props.payload.target.toLocaleString()} ${props.payload.unit}`,
-                                                `${name} 달성률 (${props.payload.pv}%)`
-                                            ];
-                                        }}
-                                        labelStyle={{ display: 'none' }} // Hide default label since we custom format
-                                    />
+                                    {/* Tooltip removed as per request */}
                                 </RadialBarChart >
                                 <div style={{
                                     position: 'absolute',
