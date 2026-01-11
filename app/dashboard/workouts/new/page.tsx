@@ -20,11 +20,12 @@ import {
 import { DatePickerInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconX, IconUpload } from '@tabler/icons-react';
+import { IconX, IconUpload, IconWand, IconAlertCircle } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
 import { WORKOUT_TYPES, SHARING_TYPES, MAX_WORKOUT_IMAGES } from '@/lib/utils/constants';
 import type { WorkoutType } from '@/types';
 import dayjs from 'dayjs';
+import { Alert } from '@mantine/core';
 
 function NewWorkoutContent() {
     const router = useRouter();
@@ -32,6 +33,8 @@ function NewWorkoutContent() {
     const defaultType = searchParams.get('type') as WorkoutType || 'running';
 
     const [loading, setLoading] = useState(false);
+    const [analyzingImgIndex, setAnalyzingImgIndex] = useState<number | null>(null);
+    const [aiDataFilled, setAiDataFilled] = useState(false);
     const [images, setImages] = useState<File[]>([]);
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
     const supabase = createClient();
@@ -75,6 +78,61 @@ function NewWorkoutContent() {
         const newPreviews = imagePreviews.filter((_, i) => i !== index);
         setImages(newImages);
         setImagePreviews(newPreviews);
+    };
+
+    const handleAnalyzeImage = async (file: File, index: number) => {
+        setAnalyzingImgIndex(index);
+        setAiDataFilled(false);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch('/api/analyze-workout-image', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) throw new Error('Analysis failed');
+
+            const data = await response.json();
+
+            // Auto-fill form
+            if (data.workout_type) form.setFieldValue('workout_type', data.workout_type);
+            if (data.workout_date) form.setFieldValue('workout_date', new Date(data.workout_date));
+            if (data.distance) {
+                // Check unit and convert if roughly needed, usually API returns number and unit
+                // For simplicity here, assume API returns 'km' for non-swim and 'm' for swim if possible
+                // Adjusted logic based on creating consistent UX
+                form.setFieldValue('distance_input', data.distance);
+            }
+            if (data.avg_heart_rate) form.setFieldValue('avg_heart_rate', data.avg_heart_rate);
+            if (data.cadence) form.setFieldValue('cadence', data.cadence);
+            if (data.swolf) form.setFieldValue('swolf', data.swolf);
+
+            // Parse Duration
+            if (data.duration) {
+                // expected "1:30:00" or "45:00"
+                const parts = data.duration.split(':').map(Number);
+                let h = 0, m = 0, s = 0;
+                if (parts.length === 3) {
+                    [h, m, s] = parts;
+                } else if (parts.length === 2) {
+                    [m, s] = parts;
+                }
+                setTimeState({ hours: h, minutes: m, seconds: s });
+            }
+
+            setAiDataFilled(true);
+            notifications.show({ title: '분석 완료', message: '이미지에서 데이터를 추출했습니다. 내용을 확인해주세요.', color: 'blue' });
+            // Scroll to top to show alert
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+        } catch (error) {
+            console.error(error);
+            notifications.show({ title: '분석 실패', message: '이미지 분석에 실패했습니다.', color: 'red' });
+        } finally {
+            setAnalyzingImgIndex(null);
+        }
     };
 
     const handleSubmit = async (values: typeof form.values) => {
@@ -160,6 +218,12 @@ function NewWorkoutContent() {
         <Paper withBorder shadow="sm" p="lg">
             <form onSubmit={form.onSubmit(handleSubmit)}>
                 <Stack>
+                    {aiDataFilled && (
+                        <Alert variant="light" color="yellow" title="AI 데이터 자동 입력" icon={<IconAlertCircle />}>
+                            AI가 이미지에서 데이터를 추출하여 입력했습니다. 저장하기 전에 내용이 정확한지 반드시 확인해주세요.
+                        </Alert>
+                    )}
+
                     <Select
                         label="운동 종목"
                         required
@@ -214,6 +278,20 @@ function NewWorkoutContent() {
                                         >
                                             <IconX size={16} />
                                         </ActionIcon>
+
+                                        {/* AI Analyze Button */}
+                                        <Button
+                                            size="xs"
+                                            variant="light"
+                                            color="grape"
+                                            fullWidth
+                                            mt={4}
+                                            leftSection={<IconWand size={14} />}
+                                            loading={analyzingImgIndex === index}
+                                            onClick={() => handleAnalyzeImage(images[index], index)}
+                                        >
+                                            AI 데이터 추출
+                                        </Button>
                                     </div>
                                 </Grid.Col>
                             ))}
