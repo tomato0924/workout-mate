@@ -2,14 +2,14 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { Title, Stack, Card, Text, Group, Select, SegmentedControl, Grid, Paper, RingProgress, Center, Loader, Button, Image } from '@mantine/core';
-import { IconTrophy, IconRun, IconSwimming, IconBike, IconWalk, IconMountain, IconPlus } from '@tabler/icons-react';
+import { Title, Stack, Card, Text, Group, Select, SegmentedControl, Grid, Paper, RingProgress, Center, Loader, Button, Image, ActionIcon } from '@mantine/core';
+import { IconTrophy, IconRun, IconSwimming, IconBike, IconWalk, IconMountain, IconPlus, IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import type { Workout, PersonalGoal } from '@/types';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, ReferenceLine, RadialBarChart, RadialBar, PolarAngleAxis, LabelList } from 'recharts';
+import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, ReferenceLine, RadialBarChart, RadialBar, PolarAngleAxis, LabelList } from 'recharts';
 
 dayjs.extend(isoWeek);
 
@@ -46,6 +46,12 @@ export function MyWorkoutTab() {
     const [activityType, setActivityType] = useState<string>('running');
     const [metric, setMetric] = useState<'distance' | 'time'>('distance');
     const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('daily');
+    const [dateOffset, setDateOffset] = useState(0);
+
+    // Reset date offset when period changes
+    useEffect(() => {
+        setDateOffset(0);
+    }, [period]);
 
     const supabase = createClient();
 
@@ -88,8 +94,7 @@ export function MyWorkoutTab() {
     const chartData = useMemo(() => {
         if (!workouts.length) return [];
 
-        const now = dayjs();
-        const dataPoints: { label: string; value: number; date: dayjs.Dayjs }[] = [];
+        // Effective 'Now' based on offset
         let format = 'MM/DD';
         let unit = 'day';
         let count = 5;
@@ -118,9 +123,21 @@ export function MyWorkoutTab() {
                 break;
         }
 
+        // Calculate the end date of the visible range
+        const endDate = dayjs().subtract(dateOffset * count, unit as any);
+
+        const dataPoints: {
+            label: string;
+            value: number;
+            date: dayjs.Dayjs;
+            totalDistance: number;
+            totalDuration: number;
+            speed: number;
+        }[] = [];
+
         // Generate placeholders for the last 'count' periods
         for (let i = count - 1; i >= 0; i--) {
-            const date = now.subtract(i, unit as any); // safe cast
+            const date = endDate.subtract(i, unit as any);
             let label = date.format(format);
 
             // Custom Week Label
@@ -130,7 +147,14 @@ export function MyWorkoutTab() {
                 label = `${startOfWeek} ~${endOfWeek} `;
             }
 
-            dataPoints.push({ label, value: 0, date });
+            dataPoints.push({
+                label,
+                value: 0,
+                date,
+                totalDistance: 0,
+                totalDuration: 0,
+                speed: 0
+            });
         }
 
         // Aggregate
@@ -149,28 +173,45 @@ export function MyWorkoutTab() {
             });
 
             if (match) {
-                let val = 0;
-                if (metric === 'distance') {
-                    // Convert m to km for everything except swimming
-                    // But if 'all' is selected and mixed... maybe stick to km.
-                    // If 'swimming' is exclusively selected, use m? 
-                    // User request: "Default distance".
-                    // Let's normalize: If Swimming -> m. Else -> km.
-                    if (activityType === 'swimming') {
-                        val = w.distance_meters; // meters
-                    } else {
-                        val = w.distance_meters / 1000; // km
-                    }
-                } else {
-                    val = w.duration_seconds / 60; // minutes
-                }
-                match.value += val;
+                match.totalDistance += w.distance_meters;
+                match.totalDuration += w.duration_seconds;
             }
         });
 
-        // Round values
-        return dataPoints.map(p => ({ ...p, value: Math.round(p.value * 10) / 10 }));
-    }, [workouts, activityType, metric, period]);
+        // Compute Final Values & Speed
+        return dataPoints.map(p => {
+            let value = 0;
+            if (metric === 'distance') {
+                if (activityType === 'swimming') {
+                    value = p.totalDistance; // meters
+                } else {
+                    value = p.totalDistance / 1000; // km
+                }
+            } else {
+                value = p.totalDuration / 60; // minutes
+            }
+
+            // Calculate Speed
+            // Default: km/h
+            // Swimming: m/min
+            let speed = 0;
+            if (p.totalDuration > 0) {
+                if (activityType === 'swimming') {
+                    // m / min
+                    speed = p.totalDistance / (p.totalDuration / 60);
+                } else {
+                    // km / h
+                    speed = (p.totalDistance / 1000) / (p.totalDuration / 3600);
+                }
+            }
+
+            return {
+                ...p,
+                value: Math.round(value * 10) / 10,
+                speed: Math.round(speed * 10) / 10
+            };
+        });
+    }, [workouts, activityType, metric, period, dateOffset]);
 
 
     // --- Goal Logic ---
@@ -221,15 +262,15 @@ export function MyWorkoutTab() {
 
         const chartData = [
             {
-                name: '주간',
-                period: 'weekly',
-                label: '주간',
-                uv: 100, // Background ring (always 100%)
-                pv: Math.min(100, Math.round((weeklyData.actual / weeklyData.target) * 100)) || 0,
-                fill: '#228be6', // Blue
-                target: weeklyData.target,
-                actual: weeklyData.actual,
-                unit: weeklyData.unit
+                name: '연간',
+                period: 'yearly',
+                label: '연간',
+                uv: 100,
+                pv: Math.min(100, Math.round((yearlyData.actual / yearlyData.target) * 100)) || 0,
+                fill: '#fab005', // Yellow
+                target: yearlyData.target,
+                actual: yearlyData.actual,
+                unit: yearlyData.unit
             },
             {
                 name: '월간',
@@ -243,15 +284,15 @@ export function MyWorkoutTab() {
                 unit: monthlyData.unit
             },
             {
-                name: '연간',
-                period: 'yearly',
-                label: '연간',
-                uv: 100,
-                pv: Math.min(100, Math.round((yearlyData.actual / yearlyData.target) * 100)) || 0,
-                fill: '#fab005', // Yellow
-                target: yearlyData.target,
-                actual: yearlyData.actual,
-                unit: yearlyData.unit
+                name: '주간',
+                period: 'weekly',
+                label: '주간',
+                uv: 100, // Background ring (always 100%)
+                pv: Math.min(100, Math.round((weeklyData.actual / weeklyData.target) * 100)) || 0,
+                fill: '#228be6', // Blue
+                target: weeklyData.target,
+                actual: weeklyData.actual,
+                unit: weeklyData.unit
             }
         ];
 
@@ -303,9 +344,26 @@ export function MyWorkoutTab() {
             {/* Chart 1: History */}
             <Card withBorder radius="md" p="md">
                 <Group justify="space-between" mb="lg">
-                    <Title order={4}>
-                        {ACTIVITY_LABELS[activityType]} 기록 추이
-                    </Title>
+                    <Group align="center" gap="xs">
+                        <ActionIcon
+                            variant="subtle"
+                            color="gray"
+                            onClick={() => setDateOffset(prev => prev + 1)}
+                        >
+                            <IconChevronLeft size={20} />
+                        </ActionIcon>
+                        <Title order={4}>
+                            {ACTIVITY_LABELS[activityType]} 기록 추이
+                        </Title>
+                        <ActionIcon
+                            variant="subtle"
+                            color="gray"
+                            onClick={() => setDateOffset(prev => prev - 1)}
+                            disabled={dateOffset <= 0}
+                        >
+                            <IconChevronRight size={20} />
+                        </ActionIcon>
+                    </Group>
                     <Group>
                         <Select
                             value={metric}
@@ -332,11 +390,15 @@ export function MyWorkoutTab() {
 
                 <div style={{ height: 300 }}>
                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                        <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} />
                             <XAxis dataKey="label" fontSize={12} tickMargin={10} />
-                            <YAxis hide />
-                            <Bar dataKey="value" fill="#228be6" radius={[4, 4, 0, 0]}>
+                            {/* Left Axis: Hidden */}
+                            <YAxis hide yAxisId="left" />
+                            {/* Right Axis: For Speed, Hidden */}
+                            <YAxis hide yAxisId="right" orientation="right" />
+
+                            <Bar yAxisId="left" dataKey="value" fill="#228be6" radius={[4, 4, 0, 0]}>
                                 <LabelList
                                     dataKey="value"
                                     position="top"
@@ -345,7 +407,25 @@ export function MyWorkoutTab() {
                                 />
                                 <Cell fill="#228be6" />
                             </Bar>
-                        </BarChart>
+
+                            {/* Speed Overlay Line */}
+                            <Line
+                                yAxisId="right"
+                                type="monotone"
+                                dataKey="speed"
+                                stroke="#ff6b6b"
+                                strokeWidth={2}
+                                dot={{ r: 3 }}
+                            >
+                                <LabelList
+                                    dataKey="speed"
+                                    position="top"
+                                    offset={10}
+                                    formatter={(value: any) => value > 0 ? `${value}${activityType === 'swimming' ? 'm/m' : 'km/h'}` : ''}
+                                    style={{ fontSize: 10, fill: '#ff6b6b', fontWeight: 500 }}
+                                />
+                            </Line>
+                        </ComposedChart>
                     </ResponsiveContainer>
                 </div>
             </Card>
