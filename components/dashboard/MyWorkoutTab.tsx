@@ -163,7 +163,7 @@ export function MyWorkoutTab() {
             date: dayjs.Dayjs;
             totalDistance: number;
             totalDuration: number;
-            speed: number;
+            pace: number;
         }[] = [];
 
         // Generate placeholders for the last 'count' periods
@@ -184,7 +184,7 @@ export function MyWorkoutTab() {
                 date,
                 totalDistance: 0,
                 totalDuration: 0,
-                speed: 0
+                pace: 0
             });
         }
 
@@ -222,27 +222,38 @@ export function MyWorkoutTab() {
                 value = p.totalDuration / 60; // minutes
             }
 
-            // Calculate Speed
-            // Default: km/h
-            // Swimming: m/min
-            let speed = 0;
-            if (p.totalDuration > 0) {
+            // Calculate Pace
+            // Swimming: min/100m
+            // Others: min/km
+            let pace = 0;
+            if (p.totalDistance > 0) {
                 if (activityType === 'swimming') {
-                    // m / min
-                    speed = p.totalDistance / (p.totalDuration / 60);
+                    // min / 100m
+                    // totalDuration (sec) / 60 => min
+                    // totalDistance (m) / 100 => units
+                    pace = (p.totalDuration / 60) / (p.totalDistance / 100);
                 } else {
-                    // km / h
-                    speed = (p.totalDistance / 1000) / (p.totalDuration / 3600);
+                    // min / km
+                    pace = (p.totalDuration / 60) / (p.totalDistance / 1000);
                 }
             }
 
             return {
                 ...p,
                 value: Math.round(value * 10) / 10,
-                speed: Math.round(speed * 10) / 10
+                pace: Math.round(pace * 100) / 100
             };
         });
     }, [workouts, activityType, metric, period, dateOffset]);
+
+    const formatPace = (value: number) => {
+        if (!value) return '';
+        const minutes = Math.floor(value);
+        const seconds = Math.round((value - minutes) * 60);
+        return `${minutes}'${seconds.toString().padStart(2, '0')}''`;
+    };
+
+
 
 
     // --- Goal Logic ---
@@ -438,10 +449,18 @@ export function MyWorkoutTab() {
                             <XAxis dataKey="label" fontSize={12} tickMargin={10} />
                             {/* Left Axis: Hidden */}
                             <YAxis hide yAxisId="left" />
-                            {/* Right Axis: For Speed, Hidden */}
-                            <YAxis hide yAxisId="right" orientation="right" />
+                            {/* Right Axis: For Pace, Hidden */}
+                            <YAxis hide yAxisId="right" orientation="right" domain={['auto', 'auto']} />
+                            <Tooltip
+                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}
+                                formatter={(value: any, name: any) => {
+                                    if (name === '페이스') return [formatPace(value), name];
+                                    return [value, name === '거리' ? 'km' : (metric === 'time' ? '분' : (activityType === 'swimming' ? 'm' : 'km'))];
+                                }}
+                            />
+                            <Legend />
 
-                            <Bar yAxisId="left" dataKey="value" fill="#228be6" radius={[4, 4, 0, 0]}>
+                            <Bar yAxisId="left" dataKey="value" name={metric === 'distance' ? '거리' : '시간'} fill="#228be6" radius={[4, 4, 0, 0]}>
                                 <LabelList
                                     dataKey="value"
                                     position="top"
@@ -451,21 +470,24 @@ export function MyWorkoutTab() {
                                 <Cell fill="#228be6" />
                             </Bar>
 
-                            {/* Speed Overlay Line */}
+                            {/* Pace Overlay Line */}
                             <Line
                                 yAxisId="right"
                                 type="monotone"
-                                dataKey="speed"
+                                dataKey="pace"
+                                name="페이스"
                                 stroke="#ff6b6b"
                                 strokeWidth={2}
-                                dot={{ r: 3 }}
+                                dot={{ r: 3, fill: '#ff6b6b' }}
                             >
                                 <LabelList
-                                    dataKey="speed"
+                                    dataKey="pace"
                                     position="top"
-                                    offset={10}
-                                    formatter={(value: any) => value > 0 ? `${value}${activityType === 'swimming' ? 'm/m' : 'km/h'}` : ''}
-                                    style={{ fontSize: 10, fill: '#ff6b6b', fontWeight: 500 }}
+                                    content={({ x, y, value }) => (
+                                        <text x={x} y={Number(y) - 10} fill="#ff6b6b" fontSize={10} textAnchor="middle">
+                                            {formatPace(Number(value))}
+                                        </text>
+                                    )}
                                 />
                             </Line>
                         </ComposedChart>

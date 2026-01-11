@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     Container,
@@ -16,6 +16,7 @@ import {
     Text,
     Grid,
     ActionIcon,
+    Alert,
 } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
@@ -25,7 +26,6 @@ import { createClient } from '@/lib/supabase/client';
 import { WORKOUT_TYPES, SHARING_TYPES, MAX_WORKOUT_IMAGES } from '@/lib/utils/constants';
 import type { WorkoutType } from '@/types';
 import dayjs from 'dayjs';
-import { Alert } from '@mantine/core';
 
 function NewWorkoutContent() {
     const router = useRouter();
@@ -42,6 +42,7 @@ function NewWorkoutContent() {
     // Local state for time inputs (H:M:S) to calculate total seconds later
     // We use granular state here instead of one form field for easier UI handling
     const [timeState, setTimeState] = useState({ hours: 0, minutes: 0, seconds: 0 });
+    const imageSectionRef = useRef<HTMLDivElement>(null);
 
     const form = useForm({
         initialValues: {
@@ -71,6 +72,11 @@ function NewWorkoutContent() {
         setImages(newImages);
         const previews = newImages.map(file => URL.createObjectURL(file));
         setImagePreviews(previews);
+
+        // Scroll to image section to show AI button
+        setTimeout(() => {
+            imageSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
     };
 
     const removeImage = (index: number) => {
@@ -219,12 +225,6 @@ function NewWorkoutContent() {
         <Paper withBorder shadow="sm" p="lg">
             <form onSubmit={form.onSubmit(handleSubmit)}>
                 <Stack>
-                    {aiDataFilled && (
-                        <Alert variant="light" color="yellow" title="AI 데이터 자동 입력" icon={<IconAlertCircle />}>
-                            AI가 이미지에서 데이터를 추출하여 입력했습니다. 저장하기 전에 내용이 정확한지 반드시 확인해주세요.
-                        </Alert>
-                    )}
-
                     {/* Image Upload Section - Moved to Top */}
                     <div>
                         <Group align="baseline" mb="xs">
@@ -258,37 +258,45 @@ function NewWorkoutContent() {
                     </div>
 
                     {imagePreviews.length > 0 && (
-                        <Grid>
-                            {imagePreviews.map((preview, index) => (
-                                <Grid.Col key={index} span={{ base: 12, sm: 6, md: 4 }}>
-                                    <div style={{ position: 'relative' }}>
-                                        <Image src={preview} alt={`Preview ${index + 1}`} />
-                                        <ActionIcon
-                                            color="red"
-                                            variant="filled"
-                                            style={{ position: 'absolute', top: 5, right: 5 }}
-                                            onClick={() => removeImage(index)}
-                                        >
-                                            <IconX size={16} />
-                                        </ActionIcon>
+                        <div ref={imageSectionRef}>
+                            <Grid>
+                                {imagePreviews.map((preview, index) => (
+                                    <Grid.Col key={index} span={{ base: 12, sm: 6, md: 4 }}>
+                                        <div style={{ position: 'relative' }}>
+                                            <Image src={preview} alt={`Preview ${index + 1}`} />
+                                            <ActionIcon
+                                                color="red"
+                                                variant="filled"
+                                                style={{ position: 'absolute', top: 5, right: 5 }}
+                                                onClick={() => removeImage(index)}
+                                            >
+                                                <IconX size={16} />
+                                            </ActionIcon>
 
-                                        {/* AI Analyze Button */}
-                                        <Button
-                                            size="xs"
-                                            variant="light"
-                                            color="grape"
-                                            fullWidth
-                                            mt={4}
-                                            leftSection={<IconWand size={14} />}
-                                            loading={analyzingImgIndex === index}
-                                            onClick={() => handleAnalyzeImage(images[index], index)}
-                                        >
-                                            AI 데이터 추출
-                                        </Button>
-                                    </div>
-                                </Grid.Col>
-                            ))}
-                        </Grid>
+                                            {/* AI Analyze Button */}
+                                            <Button
+                                                size="xs"
+                                                variant="light"
+                                                color="grape"
+                                                fullWidth
+                                                mt={4}
+                                                leftSection={<IconWand size={14} />}
+                                                loading={analyzingImgIndex === index}
+                                                onClick={() => handleAnalyzeImage(images[index], index)}
+                                            >
+                                                AI 데이터 추출
+                                            </Button>
+                                        </div>
+                                    </Grid.Col>
+                                ))}
+                            </Grid>
+                        </div>
+                    )}
+
+                    {aiDataFilled && (
+                        <Alert variant="light" color="yellow" title="AI 데이터 자동 입력" icon={<IconAlertCircle />}>
+                            AI가 이미지에서 데이터를 추출하여 입력했습니다. 저장하기 전에 내용이 정확한지 반드시 확인해주세요.
+                        </Alert>
                     )}
 
                     <Select
@@ -304,71 +312,6 @@ function NewWorkoutContent() {
                         {...form.getInputProps('workout_date')}
                     />
 
-                    {/* Image Upload Section */}
-                    <div>
-                        <Group align="baseline" mb="xs">
-                            <Text size="sm" fw={500}>
-                                운동 인증 사진 (최대 {MAX_WORKOUT_IMAGES}장)
-                            </Text>
-                            <Text size="xs" c="dimmed">
-                                💡 이미지 업로드 후 "AI 데이터 추출" 버튼으로 자동 입력 가능
-                            </Text>
-                        </Group>
-                        <FileButton
-                            onChange={handleImageSelect}
-                            accept="image/*"
-                            multiple
-                            disabled={images.length >= MAX_WORKOUT_IMAGES}
-                        >
-                            {(props) => (
-                                <Button
-                                    {...props}
-                                    variant="light"
-                                    leftSection={<IconUpload size={16} />}
-                                    disabled={images.length >= MAX_WORKOUT_IMAGES}
-                                >
-                                    사진 추가
-                                </Button>
-                            )}
-                        </FileButton>
-                        <Text size="xs" c="dimmed" mt="xs">
-                            {images.length} / {MAX_WORKOUT_IMAGES} 장 선택됨
-                        </Text>
-                    </div>
-
-                    {imagePreviews.length > 0 && (
-                        <Grid>
-                            {imagePreviews.map((preview, index) => (
-                                <Grid.Col key={index} span={{ base: 12, sm: 6, md: 4 }}>
-                                    <div style={{ position: 'relative' }}>
-                                        <Image src={preview} alt={`Preview ${index + 1}`} />
-                                        <ActionIcon
-                                            color="red"
-                                            variant="filled"
-                                            style={{ position: 'absolute', top: 5, right: 5 }}
-                                            onClick={() => removeImage(index)}
-                                        >
-                                            <IconX size={16} />
-                                        </ActionIcon>
-
-                                        {/* AI Analyze Button */}
-                                        <Button
-                                            size="xs"
-                                            variant="light"
-                                            color="grape"
-                                            fullWidth
-                                            mt={4}
-                                            leftSection={<IconWand size={14} />}
-                                            loading={analyzingImgIndex === index}
-                                            onClick={() => handleAnalyzeImage(images[index], index)}
-                                        >
-                                            AI 데이터 추출
-                                        </Button>
-                                    </div>
-                                </Grid.Col>
-                            ))}
-                        </Grid>
-                    )}
 
                     <Grid>
                         <Grid.Col span={12}>

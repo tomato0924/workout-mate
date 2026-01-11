@@ -236,7 +236,7 @@ export default function WorkoutDetailPage() {
 
                     <Group justify="space-between">
                         <Group>
-                            <Avatar radius="xl">{workout.user?.nickname.charAt(0)}</Avatar>
+                            <Avatar radius="xl" src={workout.user?.avatar_url}>{workout.user?.nickname.charAt(0)}</Avatar>
                             <div>
                                 <Text fw={600}>{workout.user?.nickname}</Text>
                                 <Group gap={8}>
