@@ -47,11 +47,42 @@ export function MyWorkoutTab() {
     const [metric, setMetric] = useState<'distance' | 'time'>('distance');
     const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('daily');
     const [dateOffset, setDateOffset] = useState(0);
+    const [touchStart, setTouchStart] = useState<number | null>(null);
+    const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
     // Reset date offset when period changes
     useEffect(() => {
         setDateOffset(0);
     }, [period]);
+
+    // Swipe Handlers
+    const minSwipeDistance = 50;
+
+    const onTouchStart = (e: React.TouchEvent) => {
+        setTouchEnd(null);
+        setTouchStart(e.targetTouches[0].clientX);
+    };
+
+    const onTouchMove = (e: React.TouchEvent) => {
+        setTouchEnd(e.targetTouches[0].clientX);
+    };
+
+    const onTouchEnd = () => {
+        if (!touchStart || !touchEnd) return;
+        const distance = touchStart - touchEnd;
+        const isLeftSwipe = distance > minSwipeDistance;
+        const isRightSwipe = distance < -minSwipeDistance;
+
+        if (isLeftSwipe) {
+            // Swipe Left aka "Next" (Newer)
+            if (dateOffset > 0) {
+                setDateOffset(prev => prev - 1);
+            }
+        } else if (isRightSwipe) {
+            // Swipe Right aka "Prev" (Older)
+            setDateOffset(prev => prev + 1);
+        }
+    };
 
     const supabase = createClient();
 
@@ -345,24 +376,9 @@ export function MyWorkoutTab() {
             <Card withBorder radius="md" p="md">
                 <Group justify="space-between" mb="lg">
                     <Group align="center" gap="xs">
-                        <ActionIcon
-                            variant="subtle"
-                            color="gray"
-                            onClick={() => setDateOffset(prev => prev + 1)}
-                        >
-                            <IconChevronLeft size={20} />
-                        </ActionIcon>
                         <Title order={4}>
                             {ACTIVITY_LABELS[activityType]} 기록 추이
                         </Title>
-                        <ActionIcon
-                            variant="subtle"
-                            color="gray"
-                            onClick={() => setDateOffset(prev => prev - 1)}
-                            disabled={dateOffset <= 0}
-                        >
-                            <IconChevronRight size={20} />
-                        </ActionIcon>
                     </Group>
                     <Group>
                         <Select
@@ -388,7 +404,34 @@ export function MyWorkoutTab() {
                     </Group>
                 </Group>
 
-                <div style={{ height: 300 }}>
+                <div
+                    style={{ height: 300, position: 'relative' }}
+                    onTouchStart={onTouchStart}
+                    onTouchMove={onTouchMove}
+                    onTouchEnd={onTouchEnd}
+                >
+                    {/* Navigation Overlays */}
+                    <ActionIcon
+                        variant="transparent"
+                        color="gray"
+                        size="lg"
+                        style={{ position: 'absolute', left: -10, top: '50%', transform: 'translateY(-50%)', zIndex: 10 }}
+                        onClick={() => setDateOffset(prev => prev + 1)}
+                    >
+                        <IconChevronLeft size={32} />
+                    </ActionIcon>
+
+                    <ActionIcon
+                        variant="transparent"
+                        color="gray"
+                        size="lg"
+                        style={{ position: 'absolute', right: -10, top: '50%', transform: 'translateY(-50%)', zIndex: 10 }}
+                        onClick={() => setDateOffset(prev => prev - 1)}
+                        disabled={dateOffset <= 0}
+                    >
+                        <IconChevronRight size={32} />
+                    </ActionIcon>
+
                     <ResponsiveContainer width="100%" height="100%">
                         <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} />
