@@ -34,7 +34,7 @@ export const formatWorkoutMetric = (meters: number, seconds: number, type: Worko
             value: `${pM}'${pS.toString().padStart(2, '0')}''`,
             label: '100m 페이스'
         };
-    } else if (type === 'running' || type === 'treadmill') {
+    } else if (type === 'running') {
         // Pace per km
         // minutes per km = (seconds / 60) / (meters / 1000)
         const paceDec = (seconds / 60) / (meters / 1000);

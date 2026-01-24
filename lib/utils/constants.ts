@@ -4,7 +4,6 @@ export const WORKOUT_TYPES: { value: WorkoutType; label: string }[] = [
     { value: 'running', label: '러닝' },
     { value: 'swimming', label: '수영' },
     { value: 'cycling', label: '사이클' },
-    { value: 'treadmill', label: '트레드밀' },
     { value: 'hiking', label: '등산' },
 ];
 

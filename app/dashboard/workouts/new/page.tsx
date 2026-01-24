@@ -218,7 +218,7 @@ function NewWorkoutContent() {
 
     const isSwimming = form.values.workout_type === 'swimming';
     const distanceUnit = isSwimming ? 'm' : 'km';
-    const showCadence = form.values.workout_type === 'running' || form.values.workout_type === 'treadmill';
+    const showCadence = form.values.workout_type === 'running';
     const showSwolf = isSwimming;
 
     return (

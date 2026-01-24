@@ -16,7 +16,6 @@ const WORKOUT_IMAGES: Record<string, string> = {
     swimming: '/images/workout-types/swimming.jpg',
     cycling: '/images/workout-types/cycling.jpg',
     hiking: '/images/workout-types/hiking.jpg',
-    treadmill: '/images/workout-types/treadmill.jpg',
 };
 
 const WORKOUT_ICONS: Record<string, any> = {
@@ -24,7 +23,6 @@ const WORKOUT_ICONS: Record<string, any> = {
     swimming: IconSwimming,
     cycling: IconBike,
     hiking: IconMountain,
-    treadmill: IconWalk,
 };
 
 export function WorkoutCard({ workout }: WorkoutCardProps) {

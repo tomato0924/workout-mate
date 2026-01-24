@@ -506,14 +506,13 @@ export default function ProfilePage() {
             <Modal opened={goalModalOpen} onClose={() => setGoalModalOpen(false)} title="운동 목표 설정" size="lg">
                 <Tabs value={activeTab} onChange={handleTabChange}>
                     <Tabs.List mb="md">
-                        <Tabs.Tab value="running">달리기</Tabs.Tab>
+                        <Tabs.Tab value="running">러닝</Tabs.Tab>
                         <Tabs.Tab value="swimming">수영</Tabs.Tab>
                         <Tabs.Tab value="cycling">자전거</Tabs.Tab>
-                        <Tabs.Tab value="treadmill">러닝머신</Tabs.Tab>
                         <Tabs.Tab value="hiking">등산</Tabs.Tab>
                     </Tabs.List>
 
-                    {['running', 'swimming', 'cycling', 'treadmill', 'hiking'].map((type) => (
+                    {['running', 'swimming', 'cycling', 'hiking'].map((type) => (
                         <Tabs.Panel key={type} value={type}>
                             <Stack>
                                 {['weekly', 'monthly', 'yearly'].map((period) => {

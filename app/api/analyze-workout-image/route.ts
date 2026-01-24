@@ -23,7 +23,8 @@ export async function POST(req: NextRequest) {
       If a field is not found, use null.
       
       Fields to extract:
-      - workout_type: One of ['running', 'swimming', 'cycling', 'treadmill', 'hiking']. Infer from context if needed.
+      - workout_type: One of ['running', 'swimming', 'cycling', 'hiking']. 
+        IMPORTANT: If you see treadmill, indoor running, or 러닝머신, classify it as 'running'.
       - workout_date: Date of workout in YYYY-MM-DD format.
       - duration: Total duration string (e.g. "1:30:00" or "45:00").
       - distance: Distance value (number only).

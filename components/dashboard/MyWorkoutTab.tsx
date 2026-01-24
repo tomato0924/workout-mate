@@ -17,15 +17,13 @@ const ACTIVITY_ICONS = {
     running: IconRun,
     swimming: IconSwimming,
     cycling: IconBike,
-    treadmill: IconRun, // Fallback
     hiking: IconMountain,
 };
 
 const ACTIVITY_LABELS: Record<string, string> = {
-    running: '달리기',
+    running: '러닝',
     swimming: '수영',
     cycling: '자전거',
-    treadmill: '러닝머신',
     hiking: '등산',
 };
 
@@ -362,10 +360,9 @@ export function MyWorkoutTab() {
                             value={activityType}
                             onChange={(v) => v && setActivityType(v)}
                             data={[
-                                { label: '달리기', value: 'running' },
+                                { label: '러닝', value: 'running' },
                                 { label: '수영', value: 'swimming' },
                                 { label: '자전거', value: 'cycling' },
-                                { label: '러닝머신', value: 'treadmill' },
                                 { label: '등산', value: 'hiking' },
                             ]}
                             allowDeselect={false}

@@ -53,7 +53,7 @@ type AggregatedStats = {
 
 // Activity config for UI and logic
 const ACTIVITY_CONFIG = {
-    running: { label: '달리기', icon: IconRun, color: 'blue', unit: 'km', paceUnit: '/km' },
+    running: { label: '러닝', icon: IconRun, color: 'blue', unit: 'km', paceUnit: '/km' },
     swimming: { label: '수영', icon: IconSwimming, color: 'cyan', unit: 'm', paceUnit: '/100m' },
     cycling: { label: '자전거', icon: IconBike, color: 'green', unit: 'km', paceUnit: '/km' },
 };
@@ -343,8 +343,7 @@ export default function GroupDetailPage() {
         workouts.forEach(workout => {
             // Filter by selected activity type logic
             let isMatch = false;
-            // running includes treadmill
-            if (selectedActivity === 'running' && (workout.workout_type === 'running' || workout.workout_type === 'treadmill')) isMatch = true;
+            if (selectedActivity === 'running' && workout.workout_type === 'running') isMatch = true;
             else if (selectedActivity === 'swimming' && workout.workout_type === 'swimming') isMatch = true;
             else if (selectedActivity === 'cycling' && workout.workout_type === 'cycling') isMatch = true;
 

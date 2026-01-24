@@ -216,7 +216,7 @@ export default function EditWorkoutPage() {
 
     const isSwimming = form.values.workout_type === 'swimming';
     const distanceUnit = isSwimming ? 'm' : 'km';
-    const showCadence = form.values.workout_type === 'running' || form.values.workout_type === 'treadmill';
+    const showCadence = form.values.workout_type === 'running';
     const showSwolf = isSwimming;
 
     if (loading) return <Center h={400}><Loader /></Center>;

@@ -1,6 +1,6 @@
 export type UserRole = 'super_admin' | 'admin' | 'user';
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
-export type WorkoutType = 'running' | 'swimming' | 'cycling' | 'treadmill' | 'hiking';
+export type WorkoutType = 'running' | 'swimming' | 'cycling' | 'hiking';
 export type SharingType = 'public' | 'private' | 'group';
 
 export interface UserProfile {
