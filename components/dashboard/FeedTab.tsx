@@ -118,7 +118,7 @@ export function FeedTab() {
             ) : (
                 <Stack>
                     {workouts.map((workout) => (
-                        <WorkoutCard key={workout.id} workout={workout} />
+                        <WorkoutCard key={workout.id} workout={workout} fromTab="feed" />
                     ))}
                 </Stack>
             )}

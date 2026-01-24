@@ -9,6 +9,7 @@ import { IconRun, IconSwimming, IconBike, IconMountain, IconWalk, IconEye, IconM
 
 interface WorkoutCardProps {
     workout: Workout;
+    fromTab?: string; // 'feed' or 'my_workout'
 }
 
 const WORKOUT_IMAGES: Record<string, string> = {
@@ -25,7 +26,7 @@ const WORKOUT_ICONS: Record<string, any> = {
     hiking: IconMountain,
 };
 
-export function WorkoutCard({ workout }: WorkoutCardProps) {
+export function WorkoutCard({ workout, fromTab }: WorkoutCardProps) {
     const router = useRouter();
     const metric = formatWorkoutMetric(workout.distance_meters, workout.duration_seconds, workout.workout_type);
     const TypeIcon = WORKOUT_ICONS[workout.workout_type] || IconRun;
@@ -46,12 +47,21 @@ export function WorkoutCard({ workout }: WorkoutCardProps) {
     // Real view count from DB
     const viewCount = workout.view_count || 0;
 
+    const handleClick = () => {
+        const baseUrl = `/dashboard/workouts/${workout.id}`;
+        if (fromTab) {
+            router.push(`${baseUrl}?from=${fromTab}`);
+        } else {
+            router.push(baseUrl);
+        }
+    };
+
     return (
         <Card
             withBorder
             padding={0}
             radius="md"
-            onClick={() => router.push(`/dashboard/workouts/${workout.id}`)}
+            onClick={handleClick}
             style={{ cursor: 'pointer', transition: 'transform 0.2s', overflow: 'hidden' }}
             mb="xs"
         >

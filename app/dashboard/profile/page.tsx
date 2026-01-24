@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { Container, Title, Paper, Stack, Text, Group, Avatar, Badge, Button, Modal, TextInput, PasswordInput, FileButton, ActionIcon, Grid, SimpleGrid, LoadingOverlay, Divider, Tabs, Switch, NumberInput, Select } from '@mantine/core';
+import { Container, Title, Paper, Stack, Text, Group, Avatar, Badge, Button, Modal, TextInput, PasswordInput, FileButton, ActionIcon, Grid, SimpleGrid, LoadingOverlay, Divider, Tabs, Switch, NumberInput, Select, Textarea } from '@mantine/core';
 import { IconMail, IconPhone, IconShieldCheck, IconPencil, IconCamera, IconLock, IconUpload, IconCheck, IconTarget } from '@tabler/icons-react';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
@@ -61,6 +61,8 @@ export default function ProfilePage() {
     const [goals, setGoals] = useState<PersonalGoal[]>([]);
     const [draftGoals, setDraftGoals] = useState<Record<string, { target_value: number; is_active: boolean }>>({});
     const [activeTab, setActiveTab] = useState<string>('running');
+    const [overallGoal, setOverallGoal] = useState('');
+    const [overallGoalDirty, setOverallGoalDirty] = useState(false);
 
     // Auth check state
     const [currentUserEmail, setCurrentUserEmail] = useState('');
@@ -72,6 +74,28 @@ export default function ProfilePage() {
         loadProfile();
         loadGoals();
     }, []);
+
+    const handleSaveOverallGoal = async () => {
+        if (!profile) return;
+        setLoading(true);
+        try {
+            const { error } = await supabase
+                .from('user_profiles')
+                .update({ overall_goal: overallGoal })
+                .eq('id', profile.id);
+
+            if (error) throw error;
+
+            setProfile({ ...profile, overall_goal: overallGoal });
+            setOverallGoalDirty(false);
+            notifications.show({ title: '성공', message: '종합 목표가 저장되었습니다', color: 'green' });
+        } catch (error) {
+            console.error('Save overall goal error:', error);
+            notifications.show({ title: '오류', message: '목표 저장 실패', color: 'red' });
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const loadGoals = async () => {
         const { data: { user } } = await supabase.auth.getUser();
@@ -173,7 +197,10 @@ export default function ProfilePage() {
             .eq('id', user.id)
             .single();
 
-        if (data) setProfile(data);
+        if (data) {
+            setProfile(data);
+            setOverallGoal(data.overall_goal || '');
+        }
     };
 
     // --- Avatar Logic ---
@@ -506,11 +533,33 @@ export default function ProfilePage() {
             <Modal opened={goalModalOpen} onClose={() => setGoalModalOpen(false)} title="운동 목표 설정" size="lg">
                 <Tabs value={activeTab} onChange={handleTabChange}>
                     <Tabs.List mb="md">
+                        <Tabs.Tab value="overall">종합 목표</Tabs.Tab>
                         <Tabs.Tab value="running">러닝</Tabs.Tab>
                         <Tabs.Tab value="swimming">수영</Tabs.Tab>
                         <Tabs.Tab value="cycling">자전거</Tabs.Tab>
                         <Tabs.Tab value="hiking">등산</Tabs.Tab>
                     </Tabs.List>
+
+                    {/* Overall Goal Tab */}
+                    <Tabs.Panel value="overall">
+                        <Stack>
+                            <Textarea
+                                label="종합 목표"
+                                placeholder="예: 올해 4월 25일 하프마라톤을 나갈 계획이 있으며, 목표하는 시간은 2시간 안으로 골인하는게 목표입니다."
+                                description="달성하고 싶은 운동 목표를 자유롭게 작성해주세요. AI 페이스메이커가 이 목표를 고려하여 조언해드립니다."
+                                minRows={4}
+                                maxRows={8}
+                                value={overallGoal}
+                                onChange={(e) => {
+                                    setOverallGoal(e.target.value);
+                                    setOverallGoalDirty(true);
+                                }}
+                            />
+                            <Button onClick={handleSaveOverallGoal} disabled={!overallGoalDirty}>
+                                저장
+                            </Button>
+                        </Stack>
+                    </Tabs.Panel>
 
                     {['running', 'swimming', 'cycling', 'hiking'].map((type) => (
                         <Tabs.Panel key={type} value={type}>

@@ -547,24 +547,7 @@ export default function GroupDetailPage() {
                                         <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                                         <XAxis type="number" hide />
                                         <YAxis dataKey="name" type="category" width={1} tick={false} />
-                                        <Tooltip
-                                            formatter={(value: any, name: any, props: any) => [
-                                                `${props.payload.distanceLabel}`,
-                                                '거리'
-                                            ]}
-                                        />
-                                        <Legend
-                                            content={({ payload }) => (
-                                                <Group justify="center" gap="md" mt="md">
-                                                    {payload?.map((entry: any, index: number) => (
-                                                        <Group key={`legend-${index}`} gap={4}>
-                                                            <ColorSwatch color={entry.color} size={12} />
-                                                            <Text size="sm">{entry.value}</Text>
-                                                        </Group>
-                                                    ))}
-                                                </Group>
-                                            )}
-                                        />
+
                                         {/* Goal Reference Line */}
                                         {(() => {
                                             let targetGoal: number | null = null;

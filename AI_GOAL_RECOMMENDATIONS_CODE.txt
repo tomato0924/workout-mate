@@ -1,0 +1,88 @@
+// MyWorkoutTab.tsx에 추가할 코드 조각들
+
+// 1. handleAiAdvice 함수에 JSON 파싱 로직 추가 (line 133 이후):
+/*
+            // Parse JSON recommendations from response
+            try {
+                const jsonMatch = accumulatedText.match(/```json\s*({[\s\S]*?})\s*```/);
+                if (jsonMatch) {
+                    const jsonData = JSON.parse(jsonMatch[1]);
+                    if (jsonData.goal_recommendations) {
+                        setGoalRecommendations(jsonData.goal_recommendations);
+                    }
+                }
+            } catch (e) {
+                console.log('No goal recommendations found');
+            }
+*/
+
+// 2. Apply Goals 함수 추가 (handleAiAdvice 다음에):
+const handleApplyGoals = async () => {
+    if (!goalRecommendations || goalRecommendations.length === 0) return;
+    
+    setApplyingGoals(true);
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('로그인이 필요합니다');
+
+        for (const rec of goalRecommendations) {
+            await supabase
+                .from('personal_goals')
+                .upsert({
+                    user_id: user.id,
+                    activity_type: rec.activity_type,
+                    period_type: rec.period_type,
+                    target_distance: rec.recommended_target,
+                    is_active: true
+                }, {
+                    onConflict: 'user_id,activity_type,period_type'
+                });
+        }
+
+        notifications.show({
+            title: '성공',
+            message: 'AI 추천 목표가 적용되었습니다',
+            color: 'green'
+        });
+        
+        setGoalRecommendations([]);
+        fetchData(); // Reload data
+    } catch (error) {
+        notifications.show({
+            title: '오류',
+            message: '목표 적용에 실패했습니다',
+            color: 'red'
+        });
+    } finally {
+        setApplyingGoals(false);
+    }
+};
+
+// 3. Modal 내부에 추천 목표 표시 및 적용 버튼 추가 (aiAdvice 이후):
+/*
+                        {goalRecommendations.length > 0 && (
+                            <>
+                                <Divider my="lg" label="AI 목표 추천" labelPosition="center" />
+                                <Stack gap="sm">
+                                    {goalRecommendations.map((rec: any, idx: number) => (
+                                        <Paper key={idx} p="sm" withBorder bg="blue.0">
+                                            <Text size="sm" fw={600}>
+                                                {rec.activity_type} ({rec.period_type})
+                                            </Text>
+                                            <Text size="sm">
+                                                현재: {rec.current_target} → 추천: {rec.recommended_target}
+                                            </Text>
+                                            <Text size="xs" c="dimmed">{rec.reason}</Text>
+                                        </Paper>
+                                    ))}
+                                    <Button 
+                                        onClick={handleApplyGoals} 
+                                        loading={applyingGoals}
+                                        fullWidth
+                                    >
+                                        추천 목표 적용하기
+                                    </Button>
+                                </Stack>
+                            </>
+                        )}
+*/

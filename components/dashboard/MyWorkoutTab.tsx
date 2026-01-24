@@ -2,14 +2,16 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { Title, Stack, Card, Text, Group, Select, SegmentedControl, Grid, Paper, RingProgress, Center, Loader, Button, Image, ActionIcon } from '@mantine/core';
-import { IconTrophy, IconRun, IconSwimming, IconBike, IconWalk, IconMountain, IconPlus, IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
+import { Title, Stack, Card, Text, Group, Select, SegmentedControl, Grid, Paper, RingProgress, Center, Loader, Button, Image, ActionIcon, Modal, Divider } from '@mantine/core';
+import { IconTrophy, IconRun, IconSwimming, IconBike, IconWalk, IconMountain, IconPlus, IconChevronLeft, IconChevronRight, IconSparkles } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import type { Workout, PersonalGoal } from '@/types';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
 import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, ReferenceLine, RadialBarChart, RadialBar, PolarAngleAxis, LabelList } from 'recharts';
+import { notifications } from '@mantine/notifications';
+import ReactMarkdown from 'react-markdown';
 
 dayjs.extend(isoWeek);
 
@@ -46,6 +48,13 @@ export function MyWorkoutTab() {
     const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('daily');
     const [dateOffset, setDateOffset] = useState(0);
     const [touchStart, setTouchStart] = useState<number | null>(null);
+
+    // AI Advisor state
+    const [aiModalOpen, setAiModalOpen] = useState(false);
+    const [aiAdvice, setAiAdvice] = useState('');
+    const [aiLoading, setAiLoading] = useState(false);
+    const [goalRecommendations, setGoalRecommendations] = useState<any[]>([]);
+    const [applyingGoals, setApplyingGoals] = useState(false);
     const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
     // Reset date offset when period changes
@@ -79,6 +88,146 @@ export function MyWorkoutTab() {
         } else if (isRightSwipe) {
             // Swipe Right aka "Prev" (Older)
             setDateOffset(prev => prev + 1);
+        }
+    };
+
+    const handleAiAdvice = async () => {
+        setAiLoading(true);
+        setAiModalOpen(true);
+        setAiAdvice('');
+
+        try {
+            const response = await fetch('/api/ai-workout-advice', {
+                method: 'POST',
+            });
+
+            if (!response.ok) {
+                let errorMessage = 'AI 조언 생성에 실패했습니다';
+                try {
+                    const data = await response.json();
+                    errorMessage = data.error || errorMessage;
+                } catch {
+                    // If response is not JSON, use default message
+                }
+                throw new Error(errorMessage);
+            }
+
+            // Read streaming response
+            const reader = response.body?.getReader();
+            const decoder = new TextDecoder();
+
+            if (!reader) {
+                throw new Error('스트림을 읽을 수 없습니다');
+            }
+
+            let accumulatedText = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+
+                if (done) break;
+
+                const chunk = decoder.decode(value, { stream: true });
+                accumulatedText += chunk;
+                setAiAdvice(accumulatedText);
+            }
+
+            // Parse JSON recommendations from response
+            try {
+                const jsonMatch = accumulatedText.match(/```json\s*({[\s\S]*?})\s*```/);
+                if (jsonMatch) {
+                    const jsonData = JSON.parse(jsonMatch[1]);
+                    if (jsonData.goal_recommendations) {
+                        setGoalRecommendations(jsonData.goal_recommendations);
+                    }
+                    // Remove JSON from displayed text
+                    accumulatedText = accumulatedText.replace(/```json\s*{[\s\S]*?}\s*```/g, '').trim();
+                    setAiAdvice(accumulatedText);
+                }
+            } catch (e) {
+                console.log('No goal recommendations found');
+            }
+
+        } catch (error: any) {
+            console.error('AI advice error:', error);
+            notifications.show({
+                title: '오류',
+                message: error.message || 'AI 조언을 불러올 수 없습니다',
+                color: 'red',
+            });
+            setAiModalOpen(false);
+        } finally {
+            setAiLoading(false);
+        }
+    };
+
+    const handleApplyGoals = async () => {
+        if (!goalRecommendations || goalRecommendations.length === 0) return;
+
+        setApplyingGoals(true);
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('로그인이 필요합니다');
+
+            for (const rec of goalRecommendations) {
+                // Check if goal already exists
+                const { data: existing } = await supabase
+                    .from('personal_goals')
+                    .select('id')
+                    .eq('user_id', user.id)
+                    .eq('activity_type', rec.activity_type)
+                    .eq('period_type', rec.period_type)
+                    .single();
+
+                let error;
+                if (existing) {
+                    // Update existing
+                    const result = await supabase
+                        .from('personal_goals')
+                        .update({
+                            target_value: rec.recommended_target,
+                            metric_type: 'distance',
+                            is_active: true
+                        })
+                        .eq('id', existing.id);
+                    error = result.error;
+                } else {
+                    // Insert new
+                    const result = await supabase
+                        .from('personal_goals')
+                        .insert({
+                            user_id: user.id,
+                            activity_type: rec.activity_type,
+                            period_type: rec.period_type,
+                            target_value: rec.recommended_target,
+                            metric_type: 'distance',
+                            is_active: true
+                        });
+                    error = result.error;
+                }
+
+                if (error) {
+                    console.error('Goal save error:', error);
+                    throw error;
+                }
+            }
+
+            notifications.show({
+                title: '성공',
+                message: 'AI 추천 목표가 적용되었습니다',
+                color: 'green'
+            });
+
+            setGoalRecommendations([]);
+        } catch (error: any) {
+            console.error('Apply goals error:', error);
+            notifications.show({
+                title: '오류',
+                message: error.message || '목표 적용에 실패했습니다',
+                color: 'red'
+            });
+        } finally {
+            setApplyingGoals(false);
         }
     };
 
@@ -448,14 +597,7 @@ export function MyWorkoutTab() {
                             <YAxis hide yAxisId="left" />
                             {/* Right Axis: For Pace, Hidden */}
                             <YAxis hide yAxisId="right" orientation="right" domain={['auto', 'auto']} />
-                            <Tooltip
-                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}
-                                formatter={(value: any, name: any) => {
-                                    if (name === '페이스') return [formatPace(value), name];
-                                    return [value, name === '거리' ? 'km' : (metric === 'time' ? '분' : (activityType === 'swimming' ? 'm' : 'km'))];
-                                }}
-                            />
-                            <Legend />
+
 
                             <Bar yAxisId="left" dataKey="value" name={metric === 'distance' ? '거리' : '시간'} fill="#228be6" radius={[4, 4, 0, 0]}>
                                 <LabelList
@@ -574,8 +716,81 @@ export function MyWorkoutTab() {
                             목표 설정 하러가기
                         </Button>
                     </Center>
+
+                    {/* AI Pacemaker Button */}
+                    <Center mt="xl">
+                        <Button
+                            variant="gradient"
+                            gradient={{ from: 'indigo', to: 'cyan', deg: 45 }}
+                            size="lg"
+                            leftSection={<IconSparkles size={20} />}
+                            onClick={handleAiAdvice}
+                            loading={aiLoading}
+                        >
+                            AI 페이스메이커
+                        </Button>
+                    </Center>
                 </Card >
             </Stack >
+
+            {/* AI Advice Modal */}
+            <Modal
+                opened={aiModalOpen}
+                onClose={() => setAiModalOpen(false)}
+                title={<Group><IconSparkles size={24} /><Text fw={700}>AI 운동 코치 조언</Text></Group>}
+                size="lg"
+                styles={{
+                    body: { maxHeight: '70vh', overflowY: 'auto' },
+                }}
+            >
+                {aiAdvice ? (
+                    <Paper p="md" withBorder>
+                        <ReactMarkdown
+                            components={{
+                                h1: ({ node, ...props }) => <Title order={2} mt="lg" mb="md" {...props} />,
+                                h2: ({ node, ...props }) => <Title order={3} mt="md" mb="sm" {...props} />,
+                                h3: ({ node, ...props }) => <Title order={4} mt="sm" mb="xs" {...props} />,
+                                p: ({ node, ...props }) => <Text mb="sm" {...props} />,
+                                ul: ({ node, ...props }) => <ul style={{ marginBottom: '1rem', paddingLeft: '1.5rem' }} {...props} />,
+                                ol: ({ node, ...props }) => <ol style={{ marginBottom: '1rem', paddingLeft: '1.5rem' }} {...props} />,
+                                li: ({ node, ...props }) => <li style={{ marginBottom: '0.5rem' }} {...props} />,
+                                strong: ({ node, ...props }) => <Text span fw={700} {...props} />,
+                            }}
+                        >
+                            {aiAdvice}
+                        </ReactMarkdown>
+                        {goalRecommendations.length > 0 && (
+                            <>
+                                <Divider my="lg" label="AI 목표 추천" labelPosition="center" />
+                                <Stack gap="sm">
+                                    {goalRecommendations.map((rec: any, idx: number) => (
+                                        <Paper key={idx} p="sm" withBorder bg="blue.0">
+                                            <Text size="sm" fw={600}>
+                                                {rec.activity_type} ({rec.period_type})
+                                            </Text>
+                                            <Text size="sm">
+                                                현재: {rec.current_target} → 추천: {rec.recommended_target}
+                                            </Text>
+                                            <Text size="xs" c="dimmed">{rec.reason}</Text>
+                                        </Paper>
+                                    ))}
+                                    <Button
+                                        onClick={handleApplyGoals}
+                                        loading={applyingGoals}
+                                        fullWidth
+                                    >
+                                        추천 목표 적용하기
+                                    </Button>
+                                </Stack>
+                            </>
+                        )}
+                    </Paper>
+                ) : (
+                    <Center h={200}>
+                        <Loader size="lg" />
+                    </Center>
+                )}
+            </Modal>
         </Stack >
     );
 }

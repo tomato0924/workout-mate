@@ -12,6 +12,7 @@ export interface UserProfile {
     role: UserRole;
     approval_status: ApprovalStatus;
     avatar_url?: string | null;
+    overall_goal?: string | null;
     created_at: string;
 }
 

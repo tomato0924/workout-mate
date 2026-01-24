@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
     Container,
     Title,
@@ -43,8 +43,18 @@ export default function WorkoutDetailPage() {
 
     const supabase = createClient();
     const hasViewedRef = useRef(false);
+    const searchParams = useSearchParams();
 
     const [currentUser, setCurrentUser] = useState<any>(null);
+
+    const handleBack = () => {
+        const from = searchParams.get('from');
+        if (from === 'feed') {
+            router.push('/dashboard?tab=feed');
+        } else {
+            router.push('/dashboard');
+        }
+    };
 
     useEffect(() => {
         loadWorkout();
