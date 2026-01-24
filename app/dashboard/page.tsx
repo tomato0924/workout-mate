@@ -1,13 +1,13 @@
 'use client';
 
-import { Container, Stack, Tabs, Title, Group, Text } from '@mantine/core';
+import { Container, Stack, Tabs, Title } from '@mantine/core';
 import { IconChartBar, IconList } from '@tabler/icons-react';
 import { MyWorkoutTab } from '@/components/dashboard/MyWorkoutTab';
 import { FeedTab } from '@/components/dashboard/FeedTab';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 
-export default function DashboardPage() {
+function DashboardContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'my_workout');
@@ -52,5 +52,13 @@ export default function DashboardPage() {
                 </Tabs>
             </Stack>
         </Container>
+    );
+}
+
+export default function DashboardPage() {
+    return (
+        <Suspense fallback={<Container size="md"><Title order={2}>로딩 중...</Title></Container>}>
+            <DashboardContent />
+        </Suspense>
     );
 }
