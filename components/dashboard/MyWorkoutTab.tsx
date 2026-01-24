@@ -747,14 +747,14 @@ export function MyWorkoutTab() {
                     <Paper p="md" withBorder>
                         <ReactMarkdown
                             components={{
-                                h1: ({ ...props }) => <Title order={2} mt="lg" mb="md" {...props} />,
-                                h2: ({ ...props }) => <Title order={3} mt="md" mb="sm" {...props} />,
-                                h3: ({ ...props }) => <Title order={4} mt="sm" mb="xs" {...props} />,
-                                p: ({ ...props }) => <Text mb="sm" {...props} />,
-                                ul: ({ ...props }) => <ul style={{ marginBottom: '1rem', paddingLeft: '1.5rem' }} {...props} />,
-                                ol: ({ ...props }) => <ol style={{ marginBottom: '1rem', paddingLeft: '1.5rem' }} {...props} />,
-                                li: ({ ...props }) => <li style={{ marginBottom: '0.5rem' }} {...props} />,
-                                strong: ({ ...props }) => <Text span fw={700} {...props} />,
+                                h1: ({ ...props }) => <Title order={2} mt="lg" mb="md" {...props as any} />,
+                                h2: ({ ...props }) => <Title order={3} mt="md" mb="sm" {...props as any} />,
+                                h3: ({ ...props }) => <Title order={4} mt="sm" mb="xs" {...props as any} />,
+                                p: ({ ...props }) => <Text mb="sm" {...props as any} />,
+                                ul: ({ ...props }) => <ul style={{ marginBottom: '1rem', paddingLeft: '1.5rem' }} {...props as any} />,
+                                ol: ({ ...props }) => <ol style={{ marginBottom: '1rem', paddingLeft: '1.5rem' }} {...props as any} />,
+                                li: ({ ...props }) => <li style={{ marginBottom: '0.5rem' }} {...props as any} />,
+                                strong: ({ ...props }) => <Text span fw={700} {...props as any} />,
                             }}
                         >
                             {aiAdvice}
