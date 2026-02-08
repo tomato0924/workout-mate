@@ -2,8 +2,9 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { Title, Stack, Card, Text, Group, Select, SegmentedControl, Grid, Paper, RingProgress, Center, Loader, Button, Image, ActionIcon, Modal, Divider, Checkbox } from '@mantine/core';
-import { IconTrophy, IconRun, IconSwimming, IconBike, IconWalk, IconMountain, IconPlus, IconChevronLeft, IconChevronRight, IconSparkles } from '@tabler/icons-react';
+import { Title, Stack, Card, Text, Group, Select, SegmentedControl, Grid, Paper, RingProgress, Center, Loader, Button, Image, ActionIcon, Modal, Divider, Checkbox, ThemeIcon, Badge, Box } from '@mantine/core';
+import { Carousel } from '@mantine/carousel';
+import { IconTrophy, IconRun, IconSwimming, IconBike, IconWalk, IconMountain, IconPlus, IconChevronLeft, IconChevronRight, IconSparkles, IconFlame, IconChartBar, IconTarget, IconStar } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import type { Workout, PersonalGoal } from '@/types';
@@ -696,6 +697,121 @@ export function MyWorkoutTab() {
         return goalDashboardData.some(d => !d.hasGoal);
     }, [goalDashboardData]);
 
+    // 30-day workout summary for carousel cards
+    const workoutSummary = useMemo(() => {
+        const now = dayjs();
+        const thirtyDaysAgo = now.subtract(30, 'day');
+
+        // Filter workouts from last 30 days
+        const recentWorkouts = workouts.filter(w =>
+            dayjs(w.workout_date).isAfter(thirtyDaysAgo)
+        );
+
+        // Card 1: Activity Summary (성실도)
+        const totalCount = recentWorkouts.length;
+        let activityLevel: 'high' | 'normal' | 'low' = 'low';
+        let activityMessage = '';
+        let activityColor = 'orange';
+        let activityEmoji = '💤';
+
+        if (totalCount >= 15) {
+            activityLevel = 'high';
+            activityMessage = '완벽한 페이스예요! 이 기세를 계속 유지해요! 🔥';
+            activityColor = 'green';
+            activityEmoji = '🔥';
+        } else if (totalCount >= 8) {
+            activityLevel = 'normal';
+            activityMessage = '꾸준함이 답입니다. 조금만 더 힘내볼까요?';
+            activityColor = 'blue';
+            activityEmoji = '👟';
+        } else if (totalCount >= 1) {
+            activityMessage = '잠시 쉬어도 괜찮아요, 내일 다시 시작해요.';
+        } else {
+            activityMessage = '운동화에 먼지가 쌓이고 있어요! 가벼운 산책부터 시작해보세요.';
+        }
+
+        // Card 2: Sport Portfolio (종목별 분포)
+        const sportCounts: Record<string, { count: number; distance: number }> = {};
+        recentWorkouts.forEach(w => {
+            if (!sportCounts[w.workout_type]) {
+                sportCounts[w.workout_type] = { count: 0, distance: 0 };
+            }
+            sportCounts[w.workout_type].count++;
+            sportCounts[w.workout_type].distance += w.distance_meters;
+        });
+
+        const sortedSports = Object.entries(sportCounts)
+            .sort((a, b) => b[1].count - a[1].count);
+
+        const isBalanced = sortedSports.length >= 2 &&
+            sortedSports[0][1].count <= sortedSports[sortedSports.length - 1][1].count * 2;
+
+        let portfolioMessage = '';
+        if (sortedSports.length === 0) {
+            portfolioMessage = '아직 기록이 없어요. 첫 운동을 시작해볼까요?';
+        } else if (isBalanced) {
+            portfolioMessage = '다양한 운동으로 균형 잡힌 체력을 만들고 있어요! 💪';
+        } else if (sortedSports.length === 1) {
+            portfolioMessage = `${ACTIVITY_LABELS[sortedSports[0][0]] || sortedSports[0][0]} 마스터시네요!`;
+        } else {
+            portfolioMessage = `${ACTIVITY_LABELS[sortedSports[0][0]] || sortedSports[0][0]}에 집중하고 계시네요!`;
+        }
+
+        // Card 3: Best Workout (최고의 순간)
+        let bestWorkout: Workout | null = null;
+        let bestPace = Infinity;
+        recentWorkouts.forEach(w => {
+            if (w.distance_meters > 0 && w.duration_seconds > 0) {
+                const pace = w.workout_type === 'swimming'
+                    ? (w.duration_seconds / 60) / (w.distance_meters / 100)
+                    : (w.duration_seconds / 60) / (w.distance_meters / 1000);
+                if (pace < bestPace) {
+                    bestPace = pace;
+                    bestWorkout = w;
+                }
+            }
+        });
+
+        const formatPace = (pace: number, type: string) => {
+            const mins = Math.floor(pace);
+            const secs = Math.round((pace - mins) * 60);
+            const unit = type === 'swimming' ? '/100m' : '/km';
+            return `${mins}'${secs.toString().padStart(2, '0')}"${unit}`;
+        };
+
+        // Card 4: Goal Achievement (목표 달성률)
+        const currentActivityGoals = goals.filter(g => g.is_active);
+        let avgAchievement = 0;
+        if (currentActivityGoals.length > 0 && goalDashboardData.length > 0) {
+            const achievements = goalDashboardData
+                .filter(d => d.hasGoal)
+                .map(d => d.pv);
+            avgAchievement = achievements.length > 0
+                ? Math.round(achievements.reduce((a, b) => a + b, 0) / achievements.length)
+                : 0;
+        }
+
+        let goalMessage = '';
+        if (avgAchievement >= 100) {
+            goalMessage = '모든 목표를 달성했어요! 새로운 도전을 시작해볼까요? 🎯';
+        } else if (avgAchievement >= 70) {
+            goalMessage = '목표에 거의 다 왔어요! 조금만 더!';
+        } else if (avgAchievement >= 30) {
+            goalMessage = '꾸준히 달려가고 있어요. 화이팅!';
+        } else if (currentActivityGoals.length > 0) {
+            goalMessage = '목표가 멀어지고 있습니다. 오늘 한 번 도전해볼까요?';
+        } else {
+            goalMessage = '목표를 설정하고 더 동기부여 받아보세요!';
+        }
+
+        return {
+            activity: { totalCount, level: activityLevel, message: activityMessage, color: activityColor, emoji: activityEmoji },
+            portfolio: { sports: sortedSports, message: portfolioMessage, isBalanced },
+            best: { workout: bestWorkout as Workout | null, pace: bestPace, formatPace },
+            goal: { achievement: avgAchievement, message: goalMessage, hasGoals: currentActivityGoals.length > 0 }
+        };
+    }, [workouts, goals, goalDashboardData]);
+
     const unitLabel = metric === 'time' ? '분' : (activityType === 'swimming' ? 'm' : 'km');
 
     if (loading) {
@@ -708,6 +824,158 @@ export function MyWorkoutTab() {
 
     return (
         <Stack mt="md" gap="xl">
+            {/* Workout Summary Carousel */}
+            <Box>
+                <Text fw={600} size="lg" mb="sm">📊 최근 30일 운동 요약</Text>
+                <Carousel
+                    slideSize="85%"
+                    slideGap="md"
+                    align="start"
+                    withControls={false}
+                    containScroll="trimSnaps"
+                    styles={{
+                        root: { overflow: 'visible' }
+                    }}
+                >
+                    {/* Card 1: Activity Summary */}
+                    <Carousel.Slide>
+                        <Paper
+                            p="lg"
+                            radius="lg"
+                            style={{
+                                background: `linear-gradient(135deg, ${workoutSummary.activity.color === 'green' ? '#20c997, #12b886' :
+                                    workoutSummary.activity.color === 'blue' ? '#339af0, #228be6' :
+                                        '#fd7e14, #f76707'
+                                    })`,
+                                color: 'white',
+                                minHeight: 160
+                            }}
+                        >
+                            <Group justify="space-between" mb="md">
+                                <Text size="sm" fw={500} style={{ opacity: 0.9 }}>최근 30일 활동량</Text>
+                                <Text size="xl">{workoutSummary.activity.emoji}</Text>
+                            </Group>
+                            <Text size="2rem" fw={700} mb="xs">
+                                총 {workoutSummary.activity.totalCount}회 운동
+                            </Text>
+                            <Text size="sm" style={{ opacity: 0.9 }}>
+                                {workoutSummary.activity.message}
+                            </Text>
+                        </Paper>
+                    </Carousel.Slide>
+
+                    {/* Card 2: Sport Portfolio */}
+                    <Carousel.Slide>
+                        <Paper
+                            p="lg"
+                            radius="lg"
+                            style={{
+                                background: workoutSummary.portfolio.isBalanced
+                                    ? 'linear-gradient(135deg, #845ef7, #7950f2)'
+                                    : 'linear-gradient(135deg, #4c6ef5, #364fc7)',
+                                color: 'white',
+                                minHeight: 160
+                            }}
+                        >
+                            <Group justify="space-between" mb="md">
+                                <Text size="sm" fw={500} style={{ opacity: 0.9 }}>내 운동 포트폴리오</Text>
+                                <Text size="xl">{workoutSummary.portfolio.isBalanced ? '⚖️' : '🏃'}</Text>
+                            </Group>
+                            <Stack gap="xs" mb="xs">
+                                {workoutSummary.portfolio.sports.slice(0, 2).map(([sport, data]) => (
+                                    <Group key={sport} gap="xs">
+                                        <Text size="lg" fw={600}>
+                                            {ACTIVITY_LABELS[sport] || sport}
+                                        </Text>
+                                        <Text size="sm" style={{ opacity: 0.9 }}>
+                                            {data.count}회 / {sport === 'swimming'
+                                                ? `${Math.round(data.distance)}m`
+                                                : `${(data.distance / 1000).toFixed(1)}km`}
+                                        </Text>
+                                    </Group>
+                                ))}
+                                {workoutSummary.portfolio.sports.length === 0 && (
+                                    <Text size="lg" fw={600}>아직 기록 없음</Text>
+                                )}
+                            </Stack>
+                            <Text size="sm" style={{ opacity: 0.9 }}>
+                                {workoutSummary.portfolio.message}
+                            </Text>
+                        </Paper>
+                    </Carousel.Slide>
+
+                    {/* Card 3: Best Workout */}
+                    <Carousel.Slide>
+                        <Paper
+                            p="lg"
+                            radius="lg"
+                            style={{
+                                background: workoutSummary.best.workout
+                                    ? 'linear-gradient(135deg, #fcc419, #fab005)'
+                                    : 'linear-gradient(135deg, #adb5bd, #868e96)',
+                                color: workoutSummary.best.workout ? '#000' : 'white',
+                                minHeight: 160
+                            }}
+                        >
+                            <Group justify="space-between" mb="md">
+                                <Text size="sm" fw={500} style={{ opacity: 0.8 }}>잊지 못할 기록</Text>
+                                <Text size="xl">{workoutSummary.best.workout ? '🏆' : '⭐'}</Text>
+                            </Group>
+                            {workoutSummary.best.workout ? (
+                                <>
+                                    <Text size="lg" fw={600} mb="xs">
+                                        {dayjs(workoutSummary.best.workout.workout_date).format('M/D')} {ACTIVITY_LABELS[workoutSummary.best.workout.workout_type]}
+                                    </Text>
+                                    <Text size="2rem" fw={700} mb="xs">
+                                        {workoutSummary.best.formatPace(workoutSummary.best.pace, workoutSummary.best.workout.workout_type)}
+                                    </Text>
+                                    <Text size="sm" style={{ opacity: 0.8 }}>
+                                        최고의 페이스를 기록했어요! 🎉
+                                    </Text>
+                                </>
+                            ) : (
+                                <>
+                                    <Text size="lg" fw={600} mb="xs">기록을 남겨보세요</Text>
+                                    <Text size="sm" style={{ opacity: 0.9 }}>
+                                        첫 운동을 기록하고 최고의 순간을 만들어보세요!
+                                    </Text>
+                                </>
+                            )}
+                        </Paper>
+                    </Carousel.Slide>
+
+                    {/* Card 4: Goal Achievement */}
+                    <Carousel.Slide>
+                        <Paper
+                            p="lg"
+                            radius="lg"
+                            style={{
+                                background: workoutSummary.goal.achievement >= 100
+                                    ? 'linear-gradient(135deg, #20c997, #0ca678)'
+                                    : workoutSummary.goal.achievement >= 50
+                                        ? 'linear-gradient(135deg, #339af0, #1c7ed6)'
+                                        : 'linear-gradient(135deg, #ff6b6b, #f03e3e)',
+                                color: 'white',
+                                minHeight: 160
+                            }}
+                        >
+                            <Group justify="space-between" mb="md">
+                                <Text size="sm" fw={500} style={{ opacity: 0.9 }}>목표 달성 현황</Text>
+                                <Text size="xl">{workoutSummary.goal.achievement >= 100 ? '🚩' : '📈'}</Text>
+                            </Group>
+                            <Text size="2rem" fw={700} mb="xs">
+                                {workoutSummary.goal.hasGoals
+                                    ? `${workoutSummary.goal.achievement}% 달성`
+                                    : '목표 미설정'}
+                            </Text>
+                            <Text size="sm" style={{ opacity: 0.9 }}>
+                                {workoutSummary.goal.message}
+                            </Text>
+                        </Paper>
+                    </Carousel.Slide>
+                </Carousel>
+            </Box>
+
             {/* Global Activity Selector */}
             <Paper p="md" withBorder radius="md">
                 <Group justify="space-between" align="start">
