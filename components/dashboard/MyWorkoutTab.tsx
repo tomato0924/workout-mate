@@ -260,7 +260,7 @@ export function MyWorkoutTab() {
     // Save coaching result to database
     const handleSaveCoaching = async (content: string, recommendations: any[]) => {
         try {
-            await fetch('/api/ai-workout-advice', {
+            const response = await fetch('/api/ai-workout-advice', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -269,14 +269,26 @@ export function MyWorkoutTab() {
                 })
             });
 
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || '코칭 저장 실패');
+            }
+
             // Update previous coaching state
             setPreviousCoaching({
                 content,
                 goal_recommendations: recommendations.length > 0 ? recommendations : null,
                 created_at: new Date().toISOString()
             });
-        } catch (error) {
+
+            console.log('Coaching saved successfully');
+        } catch (error: any) {
             console.error('Failed to save coaching:', error);
+            notifications.show({
+                title: '저장 오류',
+                message: error.message || '코칭 결과를 저장하는데 실패했습니다. ai_coaching_history 테이블이 생성되어 있는지 확인해주세요.',
+                color: 'orange',
+            });
         }
     };
 
