@@ -1,10 +1,11 @@
 
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
-import { Title, Stack, Card, Text, Group, Select, SegmentedControl, Grid, Paper, RingProgress, Center, Loader, Button, Image, ActionIcon, Modal, Divider, Checkbox, ThemeIcon, Badge, Box } from '@mantine/core';
-import { Carousel } from '@mantine/carousel';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import { Title, Stack, Card, Text, Group, Select, SegmentedControl, Grid, Paper, RingProgress, Center, Loader, Button, Image, ActionIcon, Modal, Divider, Checkbox, ThemeIcon, Badge, Box, Affix, Transition } from '@mantine/core';
+import { Carousel, Embla } from '@mantine/carousel';
 import { IconTrophy, IconRun, IconSwimming, IconBike, IconWalk, IconMountain, IconPlus, IconChevronLeft, IconChevronRight, IconSparkles, IconFlame, IconChartBar, IconTarget, IconStar } from '@tabler/icons-react';
+import Autoplay from 'embla-carousel-autoplay';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import type { Workout, PersonalGoal } from '@/types';
@@ -48,6 +49,10 @@ export function MyWorkoutTab() {
     const [metric, setMetric] = useState<'distance' | 'time'>('distance');
     const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('daily');
     const [dateOffset, setDateOffset] = useState(0);
+
+    // Carousel autoplay and slide tracking
+    const autoplay = useRef(Autoplay({ delay: 5000 }));
+    const [carouselSlide, setCarouselSlide] = useState(0);
 
     // Chart display options with localStorage persistence
     const [chartOptions, setChartOptions] = useState<{
@@ -823,19 +828,20 @@ export function MyWorkoutTab() {
     }
 
     return (
-        <Stack mt="md" gap="xl">
+        <Stack mt="md" gap="xl" pb={80}>
             {/* Workout Summary Carousel */}
             <Box>
                 <Text fw={600} size="lg" mb="sm">📊 최근 30일 운동 요약</Text>
                 <Carousel
-                    slideSize="85%"
-                    slideGap="md"
+                    slideSize="100%"
+                    slideGap={0}
                     align="start"
                     withControls={false}
-                    containScroll="trimSnaps"
-                    styles={{
-                        root: { overflow: 'visible' }
-                    }}
+                    loop
+                    plugins={[autoplay.current]}
+                    onMouseEnter={autoplay.current.stop}
+                    onMouseLeave={autoplay.current.reset}
+                    onSlideChange={setCarouselSlide}
                 >
                     {/* Card 1: Activity Summary */}
                     <Carousel.Slide>
@@ -848,7 +854,7 @@ export function MyWorkoutTab() {
                                         '#fd7e14, #f76707'
                                     })`,
                                 color: 'white',
-                                minHeight: 160
+                                height: 180
                             }}
                         >
                             <Group justify="space-between" mb="md">
@@ -874,7 +880,7 @@ export function MyWorkoutTab() {
                                     ? 'linear-gradient(135deg, #845ef7, #7950f2)'
                                     : 'linear-gradient(135deg, #4c6ef5, #364fc7)',
                                 color: 'white',
-                                minHeight: 160
+                                height: 180
                             }}
                         >
                             <Group justify="space-between" mb="md">
@@ -914,7 +920,7 @@ export function MyWorkoutTab() {
                                     ? 'linear-gradient(135deg, #fcc419, #fab005)'
                                     : 'linear-gradient(135deg, #adb5bd, #868e96)',
                                 color: workoutSummary.best.workout ? '#000' : 'white',
-                                minHeight: 160
+                                height: 180
                             }}
                         >
                             <Group justify="space-between" mb="md">
@@ -956,7 +962,7 @@ export function MyWorkoutTab() {
                                         ? 'linear-gradient(135deg, #339af0, #1c7ed6)'
                                         : 'linear-gradient(135deg, #ff6b6b, #f03e3e)',
                                 color: 'white',
-                                minHeight: 160
+                                height: 180
                             }}
                         >
                             <Group justify="space-between" mb="md">
@@ -974,372 +980,375 @@ export function MyWorkoutTab() {
                         </Paper>
                     </Carousel.Slide>
                 </Carousel>
+                {/* Pagination Indicators */}
+                <Group justify="center" gap="xs" mt="sm">
+                    {[0, 1, 2, 3].map((index) => (
+                        <Box
+                            key={index}
+                            style={{
+                                width: carouselSlide === index ? 24 : 8,
+                                height: 8,
+                                borderRadius: 4,
+                                backgroundColor: carouselSlide === index ? '#228be6' : '#dee2e6',
+                                transition: 'all 0.3s ease'
+                            }}
+                        />
+                    ))}
+                </Group>
             </Box>
 
             {/* Global Activity Selector */}
-            <Paper p="md" withBorder radius="md">
-                <Group justify="space-between" align="start">
-                    <Stack gap="xs" style={{ flex: 1 }}>
-                        <Text fw={500} size="sm" c="dimmed">운동 종목 선택</Text>
-                        <Select
-                            value={activityType}
-                            onChange={(v) => v && setActivityType(v)}
-                            data={[
-                                { label: '러닝', value: 'running' },
-                                { label: '수영', value: 'swimming' },
-                                { label: '자전거', value: 'cycling' },
-                                { label: '등산', value: 'hiking' },
-                            ]}
-                            allowDeselect={false}
-                        />
-                    </Stack>
-                    <Button
-                        leftSection={<IconPlus size={16} />}
-                        onClick={() => router.push(`/dashboard/workouts/new?type=${activityType}`)}
-                        variant="filled"
-                        color="blue"
-                        mt={26}
-                    >
-                        운동 기록
-                    </Button>
-                </Group>
-            </Paper>
+            <Box>
+                <Text fw={600} size="lg" mb="sm">🏃 운동 종목</Text>
+                <Paper p="md" withBorder radius="md">
+                    <Select
+                        value={activityType}
+                        onChange={(v) => v && setActivityType(v)}
+                        data={[
+                            { label: '러닝', value: 'running' },
+                            { label: '수영', value: 'swimming' },
+                            { label: '자전거', value: 'cycling' },
+                            { label: '등산', value: 'hiking' },
+                        ]}
+                        allowDeselect={false}
+                    />
+                </Paper>
+            </Box>
 
             {/* Chart 1: History */}
-            <Card withBorder radius="md" p="md">
-                <Group justify="space-between" mb="lg">
-                    <Group align="center" gap="xs">
-                        <Title order={4}>
-                            {ACTIVITY_LABELS[activityType]} 기록 추이
-                        </Title>
+            <Box>
+                <Text fw={600} size="lg" mb="sm">📈 기록 추이 차트</Text>
+                <Card withBorder radius="md" p="md">
+                    <Group justify="space-between" mb="lg">
+                        <Group align="center" gap="xs">
+                            <Title order={4}>
+                                {ACTIVITY_LABELS[activityType]} 기록 추이
+                            </Title>
+                        </Group>
+                        <Group>
+                            <Select
+                                value={metric}
+                                onChange={(v) => setMetric(v as any)}
+                                data={[
+                                    { label: '거리', value: 'distance' },
+                                    { label: '시간', value: 'time' },
+                                ]}
+                                w={100}
+                            />
+                            <Select
+                                value={period}
+                                onChange={(v) => setPeriod(v as any)}
+                                data={[
+                                    { label: '일간', value: 'daily' },
+                                    { label: '주간', value: 'weekly' },
+                                    { label: '월간', value: 'monthly' },
+                                    { label: '연간', value: 'yearly' },
+                                ]}
+                                w={100}
+                            />
+                        </Group>
                     </Group>
-                    <Group>
-                        <Select
-                            value={metric}
-                            onChange={(v) => setMetric(v as any)}
-                            data={[
-                                { label: '거리', value: 'distance' },
-                                { label: '시간', value: 'time' },
-                            ]}
-                            w={100}
+
+                    <Group justify="flex-end" mb="xs" gap="md">
+                        <Checkbox
+                            label="페이스"
+                            checked={chartOptions.showPace}
+                            onChange={(e) => updateChartOption('showPace', e.currentTarget.checked)}
+                            size="sm"
                         />
-                        <Select
-                            value={period}
-                            onChange={(v) => setPeriod(v as any)}
-                            data={[
-                                { label: '일간', value: 'daily' },
-                                { label: '주간', value: 'weekly' },
-                                { label: '월간', value: 'monthly' },
-                                { label: '연간', value: 'yearly' },
-                            ]}
-                            w={100}
-                        />
-                    </Group>
-                </Group>
-
-                <Group justify="flex-end" mb="xs" gap="md">
-                    <Checkbox
-                        label="페이스"
-                        checked={chartOptions.showPace}
-                        onChange={(e) => updateChartOption('showPace', e.currentTarget.checked)}
-                        size="sm"
-                    />
-                    {/* Swimming specific options */}
-                    {activityType === 'swimming' && (
-                        <>
-                            <Checkbox
-                                label="SWOLF"
-                                checked={chartOptions.showSwolf}
-                                onChange={(e) => updateChartOption('showSwolf', e.currentTarget.checked)}
-                                size="sm"
-                            />
-                            <Checkbox
-                                label="심박수"
-                                checked={chartOptions.showHeartRate}
-                                onChange={(e) => updateChartOption('showHeartRate', e.currentTarget.checked)}
-                                size="sm"
-                            />
-                        </>
-                    )}
-                    {/* Running specific options */}
-                    {activityType === 'running' && (
-                        <>
-                            <Checkbox
-                                label="케이던스"
-                                checked={chartOptions.showCadence}
-                                onChange={(e) => updateChartOption('showCadence', e.currentTarget.checked)}
-                                size="sm"
-                            />
-                            <Checkbox
-                                label="심박수"
-                                checked={chartOptions.showHeartRate}
-                                onChange={(e) => updateChartOption('showHeartRate', e.currentTarget.checked)}
-                                size="sm"
-                            />
-                        </>
-                    )}
-                    {/* Cycling specific options */}
-                    {activityType === 'cycling' && (
-                        <>
-                            <Checkbox
-                                label="케이던스"
-                                checked={chartOptions.showCadence}
-                                onChange={(e) => updateChartOption('showCadence', e.currentTarget.checked)}
-                                size="sm"
-                            />
-                            <Checkbox
-                                label="파워"
-                                checked={chartOptions.showPower}
-                                onChange={(e) => updateChartOption('showPower', e.currentTarget.checked)}
-                                size="sm"
-                            />
-                            <Checkbox
-                                label="심박수"
-                                checked={chartOptions.showHeartRate}
-                                onChange={(e) => updateChartOption('showHeartRate', e.currentTarget.checked)}
-                                size="sm"
-                            />
-                        </>
-                    )}
-                </Group>
-
-                <div
-                    style={{ height: 300, position: 'relative' }}
-                    onTouchStart={onTouchStart}
-                    onTouchMove={onTouchMove}
-                    onTouchEnd={onTouchEnd}
-                >
-                    {/* Navigation Overlays */}
-                    <ActionIcon
-                        variant="transparent"
-                        color="gray"
-                        size="lg"
-                        style={{ position: 'absolute', left: -10, top: '50%', transform: 'translateY(-50%)', zIndex: 10 }}
-                        onClick={() => setDateOffset(prev => prev + 1)}
-                    >
-                        <IconChevronLeft size={32} />
-                    </ActionIcon>
-
-                    <ActionIcon
-                        variant="transparent"
-                        color="gray"
-                        size="lg"
-                        style={{ position: 'absolute', right: -10, top: '50%', transform: 'translateY(-50%)', zIndex: 10 }}
-                        onClick={() => setDateOffset(prev => prev - 1)}
-                        disabled={dateOffset <= 0}
-                    >
-                        <IconChevronRight size={32} />
-                    </ActionIcon>
-
-                    <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                            <XAxis dataKey="label" fontSize={12} tickMargin={10} />
-                            {/* Left Axis: Hidden */}
-                            <YAxis hide yAxisId="left" />
-                            {/* Right Axis: Dynamic domain based on active metrics */}
-                            <YAxis
-                                hide
-                                yAxisId="right"
-                                orientation="right"
-                                domain={(() => {
-                                    // Collect all active metric values
-                                    const allValues: (number | null)[] = [];
-                                    if (chartOptions.showPace) allValues.push(...chartData.map(d => d.pace));
-                                    if (chartOptions.showHeartRate) allValues.push(...chartData.map(d => d.avgHeartRate));
-                                    if (chartOptions.showCadence && (activityType === 'running' || activityType === 'cycling')) allValues.push(...chartData.map(d => d.avgCadence));
-                                    if (chartOptions.showSwolf && activityType === 'swimming') allValues.push(...chartData.map(d => d.avgSwolf));
-                                    if (chartOptions.showPower && activityType === 'cycling') allValues.push(...chartData.map(d => d.avgPower));
-
-                                    const validValues = allValues.filter((v): v is number => v !== null && v > 0);
-                                    if (validValues.length === 0) return [0, 100];
-
-                                    const min = Math.min(...validValues);
-                                    const max = Math.max(...validValues);
-                                    const padding = (max - min) * 0.15 || max * 0.1;
-
-                                    return [Math.max(0, min - padding), max + padding];
-                                })()}
-                            />
-
-
-                            <Bar yAxisId="left" dataKey="value" name={metric === 'distance' ? '거리' : '시간'} fill="#228be6" radius={[4, 4, 0, 0]}>
-                                <LabelList
-                                    dataKey="value"
-                                    position="top"
-                                    formatter={(value: any) => value > 0 ? `${value}${unitLabel}` : ''}
-                                    style={{ fontSize: 12, fill: '#666' }}
+                        {/* Swimming specific options */}
+                        {activityType === 'swimming' && (
+                            <>
+                                <Checkbox
+                                    label="SWOLF"
+                                    checked={chartOptions.showSwolf}
+                                    onChange={(e) => updateChartOption('showSwolf', e.currentTarget.checked)}
+                                    size="sm"
                                 />
-                                <Cell fill="#228be6" />
-                            </Bar>
+                                <Checkbox
+                                    label="심박수"
+                                    checked={chartOptions.showHeartRate}
+                                    onChange={(e) => updateChartOption('showHeartRate', e.currentTarget.checked)}
+                                    size="sm"
+                                />
+                            </>
+                        )}
+                        {/* Running specific options */}
+                        {activityType === 'running' && (
+                            <>
+                                <Checkbox
+                                    label="케이던스"
+                                    checked={chartOptions.showCadence}
+                                    onChange={(e) => updateChartOption('showCadence', e.currentTarget.checked)}
+                                    size="sm"
+                                />
+                                <Checkbox
+                                    label="심박수"
+                                    checked={chartOptions.showHeartRate}
+                                    onChange={(e) => updateChartOption('showHeartRate', e.currentTarget.checked)}
+                                    size="sm"
+                                />
+                            </>
+                        )}
+                        {/* Cycling specific options */}
+                        {activityType === 'cycling' && (
+                            <>
+                                <Checkbox
+                                    label="케이던스"
+                                    checked={chartOptions.showCadence}
+                                    onChange={(e) => updateChartOption('showCadence', e.currentTarget.checked)}
+                                    size="sm"
+                                />
+                                <Checkbox
+                                    label="파워"
+                                    checked={chartOptions.showPower}
+                                    onChange={(e) => updateChartOption('showPower', e.currentTarget.checked)}
+                                    size="sm"
+                                />
+                                <Checkbox
+                                    label="심박수"
+                                    checked={chartOptions.showHeartRate}
+                                    onChange={(e) => updateChartOption('showHeartRate', e.currentTarget.checked)}
+                                    size="sm"
+                                />
+                            </>
+                        )}
+                    </Group>
 
-                            {/* Pace Overlay Line */}
-                            {chartOptions.showPace && (
-                                <Line
+                    <div
+                        style={{ height: 300, position: 'relative' }}
+                        onTouchStart={onTouchStart}
+                        onTouchMove={onTouchMove}
+                        onTouchEnd={onTouchEnd}
+                    >
+                        {/* Navigation Overlays */}
+                        <ActionIcon
+                            variant="transparent"
+                            color="gray"
+                            size="lg"
+                            style={{ position: 'absolute', left: -10, top: '50%', transform: 'translateY(-50%)', zIndex: 10 }}
+                            onClick={() => setDateOffset(prev => prev + 1)}
+                        >
+                            <IconChevronLeft size={32} />
+                        </ActionIcon>
+
+                        <ActionIcon
+                            variant="transparent"
+                            color="gray"
+                            size="lg"
+                            style={{ position: 'absolute', right: -10, top: '50%', transform: 'translateY(-50%)', zIndex: 10 }}
+                            onClick={() => setDateOffset(prev => prev - 1)}
+                            disabled={dateOffset <= 0}
+                        >
+                            <IconChevronRight size={32} />
+                        </ActionIcon>
+
+                        <ResponsiveContainer width="100%" height="100%">
+                            <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                <XAxis dataKey="label" fontSize={12} tickMargin={10} />
+                                {/* Left Axis: Hidden */}
+                                <YAxis hide yAxisId="left" />
+                                {/* Right Axis: Dynamic domain based on active metrics */}
+                                <YAxis
+                                    hide
                                     yAxisId="right"
-                                    type="monotone"
-                                    dataKey="pace"
-                                    name="페이스"
-                                    stroke="#ff6b6b"
-                                    strokeWidth={2}
-                                    dot={{ r: 3, fill: '#ff6b6b' }}
-                                    connectNulls={true}
-                                >
+                                    orientation="right"
+                                    domain={(() => {
+                                        // Collect all active metric values
+                                        const allValues: (number | null)[] = [];
+                                        if (chartOptions.showPace) allValues.push(...chartData.map(d => d.pace));
+                                        if (chartOptions.showHeartRate) allValues.push(...chartData.map(d => d.avgHeartRate));
+                                        if (chartOptions.showCadence && (activityType === 'running' || activityType === 'cycling')) allValues.push(...chartData.map(d => d.avgCadence));
+                                        if (chartOptions.showSwolf && activityType === 'swimming') allValues.push(...chartData.map(d => d.avgSwolf));
+                                        if (chartOptions.showPower && activityType === 'cycling') allValues.push(...chartData.map(d => d.avgPower));
+
+                                        const validValues = allValues.filter((v): v is number => v !== null && v > 0);
+                                        if (validValues.length === 0) return [0, 100];
+
+                                        const min = Math.min(...validValues);
+                                        const max = Math.max(...validValues);
+                                        const padding = (max - min) * 0.15 || max * 0.1;
+
+                                        return [Math.max(0, min - padding), max + padding];
+                                    })()}
+                                />
+
+
+                                <Bar yAxisId="left" dataKey="value" name={metric === 'distance' ? '거리' : '시간'} fill="#228be6" radius={[4, 4, 0, 0]}>
                                     <LabelList
+                                        dataKey="value"
+                                        position="top"
+                                        formatter={(value: any) => value > 0 ? `${value}${unitLabel}` : ''}
+                                        style={{ fontSize: 12, fill: '#666' }}
+                                    />
+                                    <Cell fill="#228be6" />
+                                </Bar>
+
+                                {/* Pace Overlay Line */}
+                                {chartOptions.showPace && (
+                                    <Line
+                                        yAxisId="right"
+                                        type="monotone"
                                         dataKey="pace"
-                                        position="top"
-                                        content={({ x, y, value }) => (
-                                            value != null ? (
-                                                <text x={x} y={Number(y) - 10} fill="#ff6b6b" fontSize={10} textAnchor="middle">
-                                                    {formatPace(Number(value))}
-                                                </text>
-                                            ) : null
-                                        )}
-                                    />
-                                </Line>
-                            )}
+                                        name="페이스"
+                                        stroke="#ff6b6b"
+                                        strokeWidth={2}
+                                        dot={{ r: 3, fill: '#ff6b6b' }}
+                                        connectNulls={true}
+                                    >
+                                        <LabelList
+                                            dataKey="pace"
+                                            position="top"
+                                            content={({ x, y, value }) => (
+                                                value != null ? (
+                                                    <text x={x} y={Number(y) - 10} fill="#ff6b6b" fontSize={10} textAnchor="middle">
+                                                        {formatPace(Number(value))}
+                                                    </text>
+                                                ) : null
+                                            )}
+                                        />
+                                    </Line>
+                                )}
 
-                            {/* Heart Rate Line */}
-                            {chartOptions.showHeartRate && (
-                                <Line
-                                    yAxisId="right"
-                                    type="monotone"
-                                    dataKey="avgHeartRate"
-                                    name="심박수"
-                                    stroke="#e599f7"
-                                    strokeWidth={2}
-                                    dot={{ r: 3, fill: '#e599f7' }}
-                                    connectNulls={true}
-                                >
-                                    <LabelList
+                                {/* Heart Rate Line */}
+                                {chartOptions.showHeartRate && (
+                                    <Line
+                                        yAxisId="right"
+                                        type="monotone"
                                         dataKey="avgHeartRate"
-                                        position="top"
-                                        content={({ x, y, value }) => (
-                                            value != null ? (
-                                                <text x={x} y={Number(y) - 10} fill="#e599f7" fontSize={10} textAnchor="middle">
-                                                    {value}bpm
-                                                </text>
-                                            ) : null
-                                        )}
-                                    />
-                                </Line>
-                            )}
+                                        name="심박수"
+                                        stroke="#e599f7"
+                                        strokeWidth={2}
+                                        dot={{ r: 3, fill: '#e599f7' }}
+                                        connectNulls={true}
+                                    >
+                                        <LabelList
+                                            dataKey="avgHeartRate"
+                                            position="top"
+                                            content={({ x, y, value }) => (
+                                                value != null ? (
+                                                    <text x={x} y={Number(y) - 10} fill="#e599f7" fontSize={10} textAnchor="middle">
+                                                        {value}bpm
+                                                    </text>
+                                                ) : null
+                                            )}
+                                        />
+                                    </Line>
+                                )}
 
-                            {/* Cadence Line (Running only - spm) */}
-                            {chartOptions.showCadence && activityType === 'running' && (
-                                <Line
-                                    yAxisId="right"
-                                    type="monotone"
-                                    dataKey="avgCadence"
-                                    name="케이던스"
-                                    stroke="#74c0fc"
-                                    strokeWidth={2}
-                                    dot={{ r: 3, fill: '#74c0fc' }}
-                                    connectNulls={true}
-                                >
-                                    <LabelList
+                                {/* Cadence Line (Running only - spm) */}
+                                {chartOptions.showCadence && activityType === 'running' && (
+                                    <Line
+                                        yAxisId="right"
+                                        type="monotone"
                                         dataKey="avgCadence"
-                                        position="top"
-                                        content={({ x, y, value }) => (
-                                            value != null ? (
-                                                <text x={x} y={Number(y) - 10} fill="#74c0fc" fontSize={10} textAnchor="middle">
-                                                    {value}spm
-                                                </text>
-                                            ) : null
-                                        )}
-                                    />
-                                </Line>
-                            )}
+                                        name="케이던스"
+                                        stroke="#74c0fc"
+                                        strokeWidth={2}
+                                        dot={{ r: 3, fill: '#74c0fc' }}
+                                        connectNulls={true}
+                                    >
+                                        <LabelList
+                                            dataKey="avgCadence"
+                                            position="top"
+                                            content={({ x, y, value }) => (
+                                                value != null ? (
+                                                    <text x={x} y={Number(y) - 10} fill="#74c0fc" fontSize={10} textAnchor="middle">
+                                                        {value}spm
+                                                    </text>
+                                                ) : null
+                                            )}
+                                        />
+                                    </Line>
+                                )}
 
-                            {/* Cadence Line (Cycling only - rpm) */}
-                            {chartOptions.showCadence && activityType === 'cycling' && (
-                                <Line
-                                    yAxisId="right"
-                                    type="monotone"
-                                    dataKey="avgCadence"
-                                    name="케이던스"
-                                    stroke="#74c0fc"
-                                    strokeWidth={2}
-                                    dot={{ r: 3, fill: '#74c0fc' }}
-                                    connectNulls={true}
-                                >
-                                    <LabelList
+                                {/* Cadence Line (Cycling only - rpm) */}
+                                {chartOptions.showCadence && activityType === 'cycling' && (
+                                    <Line
+                                        yAxisId="right"
+                                        type="monotone"
                                         dataKey="avgCadence"
-                                        position="top"
-                                        content={({ x, y, value }) => (
-                                            value != null ? (
-                                                <text x={x} y={Number(y) - 10} fill="#74c0fc" fontSize={10} textAnchor="middle">
-                                                    {value}rpm
-                                                </text>
-                                            ) : null
-                                        )}
-                                    />
-                                </Line>
-                            )}
+                                        name="케이던스"
+                                        stroke="#74c0fc"
+                                        strokeWidth={2}
+                                        dot={{ r: 3, fill: '#74c0fc' }}
+                                        connectNulls={true}
+                                    >
+                                        <LabelList
+                                            dataKey="avgCadence"
+                                            position="top"
+                                            content={({ x, y, value }) => (
+                                                value != null ? (
+                                                    <text x={x} y={Number(y) - 10} fill="#74c0fc" fontSize={10} textAnchor="middle">
+                                                        {value}rpm
+                                                    </text>
+                                                ) : null
+                                            )}
+                                        />
+                                    </Line>
+                                )}
 
-                            {/* Power Line (Cycling only) */}
-                            {chartOptions.showPower && activityType === 'cycling' && (
-                                <Line
-                                    yAxisId="right"
-                                    type="monotone"
-                                    dataKey="avgPower"
-                                    name="파워"
-                                    stroke="#ffd43b"
-                                    strokeWidth={2}
-                                    dot={{ r: 3, fill: '#ffd43b' }}
-                                    connectNulls={true}
-                                >
-                                    <LabelList
+                                {/* Power Line (Cycling only) */}
+                                {chartOptions.showPower && activityType === 'cycling' && (
+                                    <Line
+                                        yAxisId="right"
+                                        type="monotone"
                                         dataKey="avgPower"
-                                        position="top"
-                                        content={({ x, y, value }) => (
-                                            value != null ? (
-                                                <text x={x} y={Number(y) - 10} fill="#ffd43b" fontSize={10} textAnchor="middle">
-                                                    {value}W
-                                                </text>
-                                            ) : null
-                                        )}
-                                    />
-                                </Line>
-                            )}
+                                        name="파워"
+                                        stroke="#ffd43b"
+                                        strokeWidth={2}
+                                        dot={{ r: 3, fill: '#ffd43b' }}
+                                        connectNulls={true}
+                                    >
+                                        <LabelList
+                                            dataKey="avgPower"
+                                            position="top"
+                                            content={({ x, y, value }) => (
+                                                value != null ? (
+                                                    <text x={x} y={Number(y) - 10} fill="#ffd43b" fontSize={10} textAnchor="middle">
+                                                        {value}W
+                                                    </text>
+                                                ) : null
+                                            )}
+                                        />
+                                    </Line>
+                                )}
 
-                            {/* SWOLF Line (Swimming only) */}
-                            {chartOptions.showSwolf && activityType === 'swimming' && (
-                                <Line
-                                    yAxisId="right"
-                                    type="monotone"
-                                    dataKey="avgSwolf"
-                                    name="SWOLF"
-                                    stroke="#69db7c"
-                                    strokeWidth={2}
-                                    dot={{ r: 3, fill: '#69db7c' }}
-                                    connectNulls={true}
-                                >
-                                    <LabelList
+                                {/* SWOLF Line (Swimming only) */}
+                                {chartOptions.showSwolf && activityType === 'swimming' && (
+                                    <Line
+                                        yAxisId="right"
+                                        type="monotone"
                                         dataKey="avgSwolf"
-                                        position="top"
-                                        content={({ x, y, value }) => (
-                                            value != null ? (
-                                                <text x={x} y={Number(y) - 10} fill="#69db7c" fontSize={10} textAnchor="middle">
-                                                    {value}
-                                                </text>
-                                            ) : null
-                                        )}
-                                    />
-                                </Line>
-                            )}
-                        </ComposedChart>
-                    </ResponsiveContainer>
-                </div>
-            </Card>
+                                        name="SWOLF"
+                                        stroke="#69db7c"
+                                        strokeWidth={2}
+                                        dot={{ r: 3, fill: '#69db7c' }}
+                                        connectNulls={true}
+                                    >
+                                        <LabelList
+                                            dataKey="avgSwolf"
+                                            position="top"
+                                            content={({ x, y, value }) => (
+                                                value != null ? (
+                                                    <text x={x} y={Number(y) - 10} fill="#69db7c" fontSize={10} textAnchor="middle">
+                                                        {value}
+                                                    </text>
+                                                ) : null
+                                            )}
+                                        />
+                                    </Line>
+                                )}
+                            </ComposedChart>
+                        </ResponsiveContainer>
+                    </div>
+                </Card>
+            </Box>
 
             {/* Chart 2: Goal Dashboard (Concentric Rings) */}
-            <Stack gap="md">
-                <Group justify="space-between">
-                    <Title order={4}> 목표 달성 현황</Title>
-                    <IconTrophy size={20} color="gold" />
-                </Group>
-
+            <Box>
+                <Text fw={600} size="lg" mb="sm">🎯 목표 달성률</Text>
                 <Card withBorder radius="md" p="md">
                     <Group justify="space-around" align="center" wrap="nowrap">
                         <div style={{ width: '100%', maxWidth: 300, height: 300, position: 'relative' }}>
@@ -1461,8 +1470,23 @@ export function MyWorkoutTab() {
                             AI 페이스메이커
                         </Button>
                     </Center>
-                </Card >
-            </Stack >
+                </Card>
+            </Box>
+
+            {/* Floating Add Workout Button */}
+            <Affix position={{ bottom: 20, right: 20 }}>
+                <Button
+                    size="lg"
+                    radius="xl"
+                    leftSection={<IconPlus size={20} />}
+                    onClick={() => router.push(`/dashboard/workouts/new?type=${activityType}`)}
+                    style={{
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                    }}
+                >
+                    운동 기록
+                </Button>
+            </Affix>
 
             {/* AI Advice Modal */}
             <Modal
