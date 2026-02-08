@@ -54,8 +54,9 @@ export interface Workout {
     duration_seconds: number;
     distance_meters: number;
     avg_heart_rate?: number;
-    cadence?: number; // for running/treadmill
+    cadence?: number; // for running/treadmill/cycling (rpm for cycling, spm for running)
     swolf?: number; // for swimming
+    avg_power?: number; // for cycling (watts)
     sharing_type: SharingType;
     shared_group_id?: string;
     created_at: string;
@@ -140,5 +141,21 @@ export interface PersonalGoal {
     target_value: number;
     metric_type: 'distance' | 'time';
     is_active: boolean;
+    created_at: string;
+}
+
+export interface GoalRecommendation {
+    activity_type: string;
+    period_type: string;
+    current_target: number;
+    recommended_target: number;
+    reason: string;
+}
+
+export interface AiCoachingHistory {
+    id: string;
+    user_id: string;
+    coaching_content: string;
+    goal_recommendations: GoalRecommendation[] | null;
     created_at: string;
 }

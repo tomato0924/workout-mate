@@ -6,6 +6,42 @@ import dayjs from 'dayjs';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
+// GET: Fetch the latest AI coaching history
+export async function GET(req: NextRequest) {
+    try {
+        const supabase = await createClient();
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+        if (authError || !user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        // Fetch the latest coaching history
+        const { data: coaching, error } = await supabase
+            .from('ai_coaching_history')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+        if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+            throw error;
+        }
+
+        return NextResponse.json({
+            coaching: coaching || null
+        });
+
+    } catch (error: any) {
+        console.error("Error fetching coaching history:", error);
+        return NextResponse.json(
+            { error: error.message || "코칭 히스토리를 불러오는데 실패했습니다" },
+            { status: 500 }
+        );
+    }
+}
+
 export async function POST(req: NextRequest) {
     try {
         const supabase = await createClient();
@@ -84,41 +120,59 @@ export async function POST(req: NextRequest) {
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
         const prompt = `
-당신은 전문 운동 코치입니다. 다음은 사용자의 최근 1개월 운동 기록입니다.
+# Role: 전문적인 AI 페이스메이커 (Fitness Coach)
 
-**운동 통계:**
+# Context:
+이 앱은 다양한 운동 목표를 가진 유저들이 사용한다. 
+AI는 각 유저가 설정한 {종합 목표}와 {최근 운동 데이터}를 비교 분석하여 최적의 코칭을 제공해야 한다.
+
+# Task: 
+사용자의 운동 기록과 개인별 {종합 목표}를 바탕으로, 핵심적인 피드백과 단계적 계획을 제공한다.
+
+# Constraints:
+1. **목표 가변성:** '4월 하프마라톤' 같은 특정 목표를 전제하지 마라. 반드시 해당 유저가 입력한 {종합 목표}를 기준으로 판단하라.
+2. **간결성:** 불필요한 서술어 없이 불렛 포인트 위주로 작성한다.
+3. **데이터 기반:** 사용자의 최근 운동 종류, 빈도, 강도(페이스, 심박수 등)를 기반으로 분석한다.
+
+---
+
+**{종합 목표}:**
+${overallGoal || '설정된 종합 목표 없음'}
+
+**{최근 운동 데이터} - 1개월간 통계:**
 - 총 운동 횟수: ${stats.total_workouts}회
 - 운동한 일수: ${stats.workout_days}일
 - 운동 종목별 요약:
-${Object.entries(stats.by_type).map(([type, data]: [string, any]) => `
-  * ${type}: ${data.count}회, 총 거리 ${type === 'swimming' ? data.total_distance + 'm' : (data.total_distance / 1000).toFixed(2) + 'km'}, 총 시간 ${Math.round(data.total_duration / 60)}분
-`).join('')}
-${overallGoal ? `
-**사용자의 종합 목표:**
-${overallGoal}
-` : ''}
+${Object.entries(stats.by_type).map(([type, data]: [string, any]) => `  * ${type}: ${data.count}회, 총 거리 ${type === 'swimming' ? data.total_distance + 'm' : (data.total_distance / 1000).toFixed(2) + 'km'}, 총 시간 ${Math.round(data.total_duration / 60)}분`).join('\n')}
 
 **현재 설정된 종목별 목표:**
-${personalGoals && personalGoals.length > 0 ? personalGoals.map((g: any) => `
-- ${g.activity_type} (${g.period_type}): ${g.target_value}${g.activity_type === 'swimming' ? 'm' : 'km'}
-`).join('') : '설정된 목표 없음'}
+${personalGoals && personalGoals.length > 0 ? personalGoals.map((g: any) => `- ${g.activity_type} (${g.period_type}): ${g.target_value}${g.activity_type === 'swimming' ? 'm' : 'km'}`).join('\n') : '설정된 목표 없음'}
 
-**상세 운동 기록 (최근 순):**
-${workoutSummary.slice(-20).map(w => `
-- ${w.date}: ${w.type}, ${w.distance_km.toFixed(2)}${w.type === 'swimming' ? 'm' : 'km'}, ${w.duration_minutes}분, 페이스: ${w.pace.toFixed(2)}분/${w.type === 'swimming' ? '100m' : 'km'}${w.avg_heart_rate ? ', 평균심박수: ' + w.avg_heart_rate + 'bpm' : ''}
-`).join('')}
+**상세 운동 기록 (최근 20개):**
+${workoutSummary.slice(-20).map(w => `- ${w.date}: ${w.type}, ${w.distance_km.toFixed(2)}${w.type === 'swimming' ? 'm' : 'km'}, ${w.duration_minutes}분, 페이스: ${w.pace.toFixed(2)}분/${w.type === 'swimming' ? '100m' : 'km'}${w.avg_heart_rate ? ', 심박수: ' + w.avg_heart_rate + 'bpm' : ''}${w.cadence ? ', 케이던스: ' + w.cadence + 'spm' : ''}`).join('\n')}
 
-다음 질문에 답변해주세요:
+---
 
-1. **현재 운동 패턴 분석**: 운동 빈도, 강도, 종목별 분포를 평가해주세요.
-2. **개선 제안**: 운동 효과를 높이기 위해 개선할 수 있는 구체적인 방법을 제시해주세요.
-3. **향후 운동 계획**: 전문가의 관점에서 다음 1개월 동안 어떻게 운동 계획을 잡으면 좋을지 조언해주세요.
-4. **주의사항**: 과훈련이나 부상 위험이 있다면 경고해주세요.
-5. **목표 조정 제안**: 현재 설정된 목표를 분석하여, 조정이 필요하다면 구체적인 목표값을 제안해주세요.
+# Output Format:
 
-답변은 친근하고 격려하는 톤으로, 구체적이고 실천 가능한 조언으로 작성해주세요. 마크다운 형식으로 작성해주세요.
+### 📊 [데이터 인사이트]
+- ({종합 목표} 달성 관점에서 본 현재 데이터의 긍정적 지표 1~2개)
 
-**중요: 목표 조정을 제안하는 경우, 답변 마지막에 다음 형식의 JSON을 포함해주세요:**
+### ⚠️ [문제 & 개선]
+- **문제:** (현재 데이터 중 {종합 목표} 달성을 저해하는 요소)
+- **개선:** (이를 해결하기 위한 구체적 제안)
+
+### 🧘 [컨디셔닝]
+- (현재 운동 패턴에 따른 부상 방지 및 회복 조언)
+
+### 🎯 [도전 목표]
+- **주간:** (이번 주 내 달성 가능한 수치)
+- **월간:** (이번 달 내 달성 가능한 마일스톤)
+- **연간:** ({종합 목표}를 향한 장기적 방향성)
+
+---
+
+**중요: 목표 조정을 제안하는 경우, 답변 마지막에 다음 형식의 JSON을 포함해주세요 (현재 설정된 종목별 목표가 데이터 기반으로 조정이 필요한 경우에만):**
 \`\`\`json
 {
   "goal_recommendations": [
@@ -175,6 +229,49 @@ ${workoutSummary.slice(-20).map(w => `
         return NextResponse.json(
             { error: message },
             { status: status }
+        );
+    }
+}
+
+// PUT: Save AI coaching result to history
+export async function PUT(req: NextRequest) {
+    try {
+        const supabase = await createClient();
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+        if (authError || !user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const body = await req.json();
+        const { coaching_content, goal_recommendations } = body;
+
+        if (!coaching_content) {
+            return NextResponse.json({ error: "코칭 내용이 필요합니다" }, { status: 400 });
+        }
+
+        // Save to database
+        const { data, error } = await supabase
+            .from('ai_coaching_history')
+            .insert({
+                user_id: user.id,
+                coaching_content,
+                goal_recommendations: goal_recommendations || null
+            })
+            .select()
+            .single();
+
+        if (error) {
+            throw error;
+        }
+
+        return NextResponse.json({ success: true, coaching: data });
+
+    } catch (error: any) {
+        console.error("Error saving coaching history:", error);
+        return NextResponse.json(
+            { error: error.message || "코칭 결과 저장에 실패했습니다" },
+            { status: 500 }
         );
     }
 }

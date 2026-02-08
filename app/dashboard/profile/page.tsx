@@ -6,7 +6,7 @@ import { IconMail, IconPhone, IconShieldCheck, IconPencil, IconCamera, IconLock,
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { createClient } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import type { UserProfile, PersonalGoal } from '@/types';
 import { WORKOUT_TYPES } from '@/lib/utils/constants';
 
@@ -69,6 +69,20 @@ export default function ProfilePage() {
 
     const supabase = createClient();
     const router = useRouter();
+    const searchParams = useSearchParams();
+
+    // Handle URL query parameters for direct navigation
+    useEffect(() => {
+        const tab = searchParams.get('tab');
+        const activity = searchParams.get('activity');
+
+        if (tab === 'goals') {
+            setGoalModalOpen(true);
+            if (activity && ['running', 'swimming', 'cycling', 'hiking'].includes(activity)) {
+                setActiveTab(activity);
+            }
+        }
+    }, [searchParams]);
 
     useEffect(() => {
         loadProfile();

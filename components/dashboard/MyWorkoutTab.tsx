@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { Title, Stack, Card, Text, Group, Select, SegmentedControl, Grid, Paper, RingProgress, Center, Loader, Button, Image, ActionIcon, Modal, Divider } from '@mantine/core';
+import { Title, Stack, Card, Text, Group, Select, SegmentedControl, Grid, Paper, RingProgress, Center, Loader, Button, Image, ActionIcon, Modal, Divider, Checkbox } from '@mantine/core';
 import { IconTrophy, IconRun, IconSwimming, IconBike, IconWalk, IconMountain, IconPlus, IconChevronLeft, IconChevronRight, IconSparkles } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -47,6 +47,37 @@ export function MyWorkoutTab() {
     const [metric, setMetric] = useState<'distance' | 'time'>('distance');
     const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('daily');
     const [dateOffset, setDateOffset] = useState(0);
+
+    // Chart display options with localStorage persistence
+    const [chartOptions, setChartOptions] = useState<{
+        showPace: boolean;
+        showHeartRate: boolean;
+        showCadence: boolean;
+        showSwolf: boolean;
+        showPower: boolean;
+    }>(() => {
+        // Default values - only pace is checked by default
+        const defaults = {
+            showPace: true,
+            showHeartRate: false,
+            showCadence: false,
+            showSwolf: false,
+            showPower: false
+        };
+
+        // Try to load from localStorage on initial render
+        if (typeof window !== 'undefined') {
+            try {
+                const saved = localStorage.getItem('workoutChartOptions');
+                if (saved) {
+                    return { ...defaults, ...JSON.parse(saved) };
+                }
+            } catch (e) {
+                console.error('Failed to load chart options:', e);
+            }
+        }
+        return defaults;
+    });
     const [touchStart, setTouchStart] = useState<number | null>(null);
 
     // AI Advisor state
@@ -56,11 +87,31 @@ export function MyWorkoutTab() {
     const [goalRecommendations, setGoalRecommendations] = useState<any[]>([]);
     const [applyingGoals, setApplyingGoals] = useState(false);
     const [touchEnd, setTouchEnd] = useState<number | null>(null);
+    const [previousCoaching, setPreviousCoaching] = useState<{
+        content: string;
+        goal_recommendations: any[] | null;
+        created_at: string;
+    } | null>(null);
+    const [loadingPreviousCoaching, setLoadingPreviousCoaching] = useState(false);
+    const [showingPrevious, setShowingPrevious] = useState(true);
 
     // Reset date offset when period changes
     useEffect(() => {
         setDateOffset(0);
     }, [period]);
+
+    // Save chart options to localStorage when they change
+    useEffect(() => {
+        try {
+            localStorage.setItem('workoutChartOptions', JSON.stringify(chartOptions));
+        } catch (e) {
+            console.error('Failed to save chart options:', e);
+        }
+    }, [chartOptions]);
+
+    const updateChartOption = (key: keyof typeof chartOptions, value: boolean) => {
+        setChartOptions(prev => ({ ...prev, [key]: value }));
+    };
 
     // Swipe Handlers
     const minSwipeDistance = 50;
@@ -91,10 +142,51 @@ export function MyWorkoutTab() {
         }
     };
 
+    // Open AI modal and load previous coaching if exists
     const handleAiAdvice = async () => {
-        setAiLoading(true);
         setAiModalOpen(true);
+        setLoadingPreviousCoaching(true);
+        setShowingPrevious(true);
         setAiAdvice('');
+        setGoalRecommendations([]);
+
+        try {
+            // Fetch previous coaching history
+            const response = await fetch('/api/ai-workout-advice', {
+                method: 'GET',
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.coaching) {
+                    setPreviousCoaching({
+                        content: data.coaching.coaching_content,
+                        goal_recommendations: data.coaching.goal_recommendations,
+                        created_at: data.coaching.created_at
+                    });
+                    // Show previous content
+                    setAiAdvice(data.coaching.coaching_content);
+                    if (data.coaching.goal_recommendations) {
+                        setGoalRecommendations(data.coaching.goal_recommendations);
+                    }
+                } else {
+                    setPreviousCoaching(null);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to load previous coaching:', error);
+            setPreviousCoaching(null);
+        } finally {
+            setLoadingPreviousCoaching(false);
+        }
+    };
+
+    // Request new AI coaching
+    const handleRequestNewCoaching = async () => {
+        setAiLoading(true);
+        setShowingPrevious(false);
+        setAiAdvice('');
+        setGoalRecommendations([]);
 
         try {
             const response = await fetch('/api/ai-workout-advice', {
@@ -133,20 +225,25 @@ export function MyWorkoutTab() {
             }
 
             // Parse JSON recommendations from response
+            let parsedRecommendations: any[] = [];
             try {
-                const jsonMatch = accumulatedText.match(/```json\s*({[\s\S]*?})\s*```/);
+                const jsonMatch = accumulatedText.match(/```json\s*([\s\S]*?)\s*```/);
                 if (jsonMatch) {
                     const jsonData = JSON.parse(jsonMatch[1]);
                     if (jsonData.goal_recommendations) {
-                        setGoalRecommendations(jsonData.goal_recommendations);
+                        parsedRecommendations = jsonData.goal_recommendations;
+                        setGoalRecommendations(parsedRecommendations);
                     }
                     // Remove JSON from displayed text
-                    accumulatedText = accumulatedText.replace(/```json\s*{[\s\S]*?}\s*```/g, '').trim();
+                    accumulatedText = accumulatedText.replace(/```json\s*[\s\S]*?\s*```/g, '').trim();
                     setAiAdvice(accumulatedText);
                 }
             } catch (e) {
                 console.log('No goal recommendations found');
             }
+
+            // Save coaching to history
+            await handleSaveCoaching(accumulatedText, parsedRecommendations);
 
         } catch (error: any) {
             console.error('AI advice error:', error);
@@ -155,9 +252,31 @@ export function MyWorkoutTab() {
                 message: error.message || 'AI 조언을 불러올 수 없습니다',
                 color: 'red',
             });
-            setAiModalOpen(false);
         } finally {
             setAiLoading(false);
+        }
+    };
+
+    // Save coaching result to database
+    const handleSaveCoaching = async (content: string, recommendations: any[]) => {
+        try {
+            await fetch('/api/ai-workout-advice', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    coaching_content: content,
+                    goal_recommendations: recommendations.length > 0 ? recommendations : null
+                })
+            });
+
+            // Update previous coaching state
+            setPreviousCoaching({
+                content,
+                goal_recommendations: recommendations.length > 0 ? recommendations : null,
+                created_at: new Date().toISOString()
+            });
+        } catch (error) {
+            console.error('Failed to save coaching:', error);
         }
     };
 
@@ -310,7 +429,20 @@ export function MyWorkoutTab() {
             date: dayjs.Dayjs;
             totalDistance: number;
             totalDuration: number;
-            pace: number;
+            pace: number | null;
+            avgHeartRate: number | null;
+            avgCadence: number | null;
+            avgSwolf: number | null;
+            avgPower: number | null;
+            workoutCount: number;
+            totalHeartRate: number;
+            totalCadence: number;
+            totalSwolf: number;
+            totalPower: number;
+            hrCount: number;
+            cadenceCount: number;
+            swolfCount: number;
+            powerCount: number;
         }[] = [];
 
         // Generate placeholders for the last 'count' periods
@@ -331,7 +463,20 @@ export function MyWorkoutTab() {
                 date,
                 totalDistance: 0,
                 totalDuration: 0,
-                pace: 0
+                pace: null,
+                avgHeartRate: null,
+                avgCadence: null,
+                avgSwolf: null,
+                avgPower: null,
+                workoutCount: 0,
+                totalHeartRate: 0,
+                totalCadence: 0,
+                totalSwolf: 0,
+                totalPower: 0,
+                hrCount: 0,
+                cadenceCount: 0,
+                swolfCount: 0,
+                powerCount: 0
             });
         }
 
@@ -353,6 +498,25 @@ export function MyWorkoutTab() {
             if (match) {
                 match.totalDistance += w.distance_meters;
                 match.totalDuration += w.duration_seconds;
+                match.workoutCount += 1;
+
+                // Aggregate optional metrics
+                if (w.avg_heart_rate) {
+                    match.totalHeartRate += w.avg_heart_rate;
+                    match.hrCount += 1;
+                }
+                if (w.cadence) {
+                    match.totalCadence += w.cadence;
+                    match.cadenceCount += 1;
+                }
+                if (w.swolf) {
+                    match.totalSwolf += w.swolf;
+                    match.swolfCount += 1;
+                }
+                if (w.avg_power) {
+                    match.totalPower += w.avg_power;
+                    match.powerCount += 1;
+                }
             }
         });
 
@@ -388,10 +552,34 @@ export function MyWorkoutTab() {
             return {
                 ...p,
                 value: Math.round(value * 10) / 10,
-                pace: Math.round(pace * 100) / 100
+                pace: pace > 0 ? Math.round(pace * 100) / 100 : null,
+                avgHeartRate: p.hrCount > 0 ? Math.round(p.totalHeartRate / p.hrCount) : null,
+                avgCadence: p.cadenceCount > 0 ? Math.round(p.totalCadence / p.cadenceCount) : null,
+                avgSwolf: p.swolfCount > 0 ? Math.round(p.totalSwolf / p.swolfCount) : null,
+                avgPower: p.powerCount > 0 ? Math.round(p.totalPower / p.powerCount) : null
             };
         });
     }, [workouts, activityType, metric, period, dateOffset]);
+
+    // Calculate Y-axis domains for each metric with improved visibility
+    const calculateDomain = (values: (number | null)[], defaultMax = 10) => {
+        const validValues = values.filter((v): v is number => v !== null && v > 0);
+        if (validValues.length === 0) return [0, defaultMax];
+
+        const min = Math.min(...validValues);
+        const max = Math.max(...validValues);
+        const padding = (max - min) * 0.15 || max * 0.1;
+
+        return [
+            Math.max(0, min - padding),
+            max + padding
+        ];
+    };
+
+    const paceYAxisDomain = useMemo(() => calculateDomain(chartData.map(d => d.pace)), [chartData]);
+    const heartRateDomain = useMemo(() => calculateDomain(chartData.map(d => d.avgHeartRate), 180), [chartData]);
+    const cadenceDomain = useMemo(() => calculateDomain(chartData.map(d => d.avgCadence), 200), [chartData]);
+    const swolfDomain = useMemo(() => calculateDomain(chartData.map(d => d.avgSwolf), 100), [chartData]);
 
     const formatPace = (value: number) => {
         if (!value) return '';
@@ -455,38 +643,46 @@ export function MyWorkoutTab() {
                 period: 'yearly',
                 label: '연간',
                 uv: 100,
-                pv: Math.min(100, Math.round((yearlyData.actual / yearlyData.target) * 100)) || 0,
+                pv: yearlyData.hasGoal ? Math.min(100, Math.round((yearlyData.actual / yearlyData.target) * 100)) || 0 : 0,
                 fill: '#fab005', // Yellow
                 target: yearlyData.target,
                 actual: yearlyData.actual,
-                unit: yearlyData.unit
+                unit: yearlyData.unit,
+                hasGoal: yearlyData.hasGoal
             },
             {
                 name: '월간',
                 period: 'monthly',
                 label: '월간',
                 uv: 100,
-                pv: Math.min(100, Math.round((monthlyData.actual / monthlyData.target) * 100)) || 0,
+                pv: monthlyData.hasGoal ? Math.min(100, Math.round((monthlyData.actual / monthlyData.target) * 100)) || 0 : 0,
                 fill: '#12b886', // Teal
                 target: monthlyData.target,
                 actual: monthlyData.actual,
-                unit: monthlyData.unit
+                unit: monthlyData.unit,
+                hasGoal: monthlyData.hasGoal
             },
             {
                 name: '주간',
                 period: 'weekly',
                 label: '주간',
                 uv: 100, // Background ring (always 100%)
-                pv: Math.min(100, Math.round((weeklyData.actual / weeklyData.target) * 100)) || 0,
+                pv: weeklyData.hasGoal ? Math.min(100, Math.round((weeklyData.actual / weeklyData.target) * 100)) || 0 : 0,
                 fill: '#228be6', // Blue
                 target: weeklyData.target,
                 actual: weeklyData.actual,
-                unit: weeklyData.unit
+                unit: weeklyData.unit,
+                hasGoal: weeklyData.hasGoal
             }
         ];
 
         return chartData;
     }, [goals, workouts, activityType]);
+
+    // Check if any goal is missing
+    const hasAnyMissingGoal = useMemo(() => {
+        return goalDashboardData.some(d => !d.hasGoal);
+    }, [goalDashboardData]);
 
     const unitLabel = metric === 'time' ? '분' : (activityType === 'swimming' ? 'm' : 'km');
 
@@ -561,6 +757,72 @@ export function MyWorkoutTab() {
                     </Group>
                 </Group>
 
+                <Group justify="flex-end" mb="xs" gap="md">
+                    <Checkbox
+                        label="페이스"
+                        checked={chartOptions.showPace}
+                        onChange={(e) => updateChartOption('showPace', e.currentTarget.checked)}
+                        size="sm"
+                    />
+                    {/* Swimming specific options */}
+                    {activityType === 'swimming' && (
+                        <>
+                            <Checkbox
+                                label="SWOLF"
+                                checked={chartOptions.showSwolf}
+                                onChange={(e) => updateChartOption('showSwolf', e.currentTarget.checked)}
+                                size="sm"
+                            />
+                            <Checkbox
+                                label="심박수"
+                                checked={chartOptions.showHeartRate}
+                                onChange={(e) => updateChartOption('showHeartRate', e.currentTarget.checked)}
+                                size="sm"
+                            />
+                        </>
+                    )}
+                    {/* Running specific options */}
+                    {activityType === 'running' && (
+                        <>
+                            <Checkbox
+                                label="케이던스"
+                                checked={chartOptions.showCadence}
+                                onChange={(e) => updateChartOption('showCadence', e.currentTarget.checked)}
+                                size="sm"
+                            />
+                            <Checkbox
+                                label="심박수"
+                                checked={chartOptions.showHeartRate}
+                                onChange={(e) => updateChartOption('showHeartRate', e.currentTarget.checked)}
+                                size="sm"
+                            />
+                        </>
+                    )}
+                    {/* Cycling specific options */}
+                    {activityType === 'cycling' && (
+                        <>
+                            <Checkbox
+                                label="케이던스"
+                                checked={chartOptions.showCadence}
+                                onChange={(e) => updateChartOption('showCadence', e.currentTarget.checked)}
+                                size="sm"
+                            />
+                            <Checkbox
+                                label="파워"
+                                checked={chartOptions.showPower}
+                                onChange={(e) => updateChartOption('showPower', e.currentTarget.checked)}
+                                size="sm"
+                            />
+                            <Checkbox
+                                label="심박수"
+                                checked={chartOptions.showHeartRate}
+                                onChange={(e) => updateChartOption('showHeartRate', e.currentTarget.checked)}
+                                size="sm"
+                            />
+                        </>
+                    )}
+                </Group>
+
                 <div
                     style={{ height: 300, position: 'relative' }}
                     onTouchStart={onTouchStart}
@@ -595,8 +857,30 @@ export function MyWorkoutTab() {
                             <XAxis dataKey="label" fontSize={12} tickMargin={10} />
                             {/* Left Axis: Hidden */}
                             <YAxis hide yAxisId="left" />
-                            {/* Right Axis: For Pace, Hidden */}
-                            <YAxis hide yAxisId="right" orientation="right" domain={['auto', 'auto']} />
+                            {/* Right Axis: Dynamic domain based on active metrics */}
+                            <YAxis
+                                hide
+                                yAxisId="right"
+                                orientation="right"
+                                domain={(() => {
+                                    // Collect all active metric values
+                                    const allValues: (number | null)[] = [];
+                                    if (chartOptions.showPace) allValues.push(...chartData.map(d => d.pace));
+                                    if (chartOptions.showHeartRate) allValues.push(...chartData.map(d => d.avgHeartRate));
+                                    if (chartOptions.showCadence && (activityType === 'running' || activityType === 'cycling')) allValues.push(...chartData.map(d => d.avgCadence));
+                                    if (chartOptions.showSwolf && activityType === 'swimming') allValues.push(...chartData.map(d => d.avgSwolf));
+                                    if (chartOptions.showPower && activityType === 'cycling') allValues.push(...chartData.map(d => d.avgPower));
+
+                                    const validValues = allValues.filter((v): v is number => v !== null && v > 0);
+                                    if (validValues.length === 0) return [0, 100];
+
+                                    const min = Math.min(...validValues);
+                                    const max = Math.max(...validValues);
+                                    const padding = (max - min) * 0.15 || max * 0.1;
+
+                                    return [Math.max(0, min - padding), max + padding];
+                                })()}
+                            />
 
 
                             <Bar yAxisId="left" dataKey="value" name={metric === 'distance' ? '거리' : '시간'} fill="#228be6" radius={[4, 4, 0, 0]}>
@@ -610,25 +894,160 @@ export function MyWorkoutTab() {
                             </Bar>
 
                             {/* Pace Overlay Line */}
-                            <Line
-                                yAxisId="right"
-                                type="monotone"
-                                dataKey="pace"
-                                name="페이스"
-                                stroke="#ff6b6b"
-                                strokeWidth={2}
-                                dot={{ r: 3, fill: '#ff6b6b' }}
-                            >
-                                <LabelList
+                            {chartOptions.showPace && (
+                                <Line
+                                    yAxisId="right"
+                                    type="monotone"
                                     dataKey="pace"
-                                    position="top"
-                                    content={({ x, y, value }) => (
-                                        <text x={x} y={Number(y) - 10} fill="#ff6b6b" fontSize={10} textAnchor="middle">
-                                            {formatPace(Number(value))}
-                                        </text>
-                                    )}
-                                />
-                            </Line>
+                                    name="페이스"
+                                    stroke="#ff6b6b"
+                                    strokeWidth={2}
+                                    dot={{ r: 3, fill: '#ff6b6b' }}
+                                    connectNulls={true}
+                                >
+                                    <LabelList
+                                        dataKey="pace"
+                                        position="top"
+                                        content={({ x, y, value }) => (
+                                            value != null ? (
+                                                <text x={x} y={Number(y) - 10} fill="#ff6b6b" fontSize={10} textAnchor="middle">
+                                                    {formatPace(Number(value))}
+                                                </text>
+                                            ) : null
+                                        )}
+                                    />
+                                </Line>
+                            )}
+
+                            {/* Heart Rate Line */}
+                            {chartOptions.showHeartRate && (
+                                <Line
+                                    yAxisId="right"
+                                    type="monotone"
+                                    dataKey="avgHeartRate"
+                                    name="심박수"
+                                    stroke="#e599f7"
+                                    strokeWidth={2}
+                                    dot={{ r: 3, fill: '#e599f7' }}
+                                    connectNulls={true}
+                                >
+                                    <LabelList
+                                        dataKey="avgHeartRate"
+                                        position="top"
+                                        content={({ x, y, value }) => (
+                                            value != null ? (
+                                                <text x={x} y={Number(y) - 10} fill="#e599f7" fontSize={10} textAnchor="middle">
+                                                    {value}bpm
+                                                </text>
+                                            ) : null
+                                        )}
+                                    />
+                                </Line>
+                            )}
+
+                            {/* Cadence Line (Running only - spm) */}
+                            {chartOptions.showCadence && activityType === 'running' && (
+                                <Line
+                                    yAxisId="right"
+                                    type="monotone"
+                                    dataKey="avgCadence"
+                                    name="케이던스"
+                                    stroke="#74c0fc"
+                                    strokeWidth={2}
+                                    dot={{ r: 3, fill: '#74c0fc' }}
+                                    connectNulls={true}
+                                >
+                                    <LabelList
+                                        dataKey="avgCadence"
+                                        position="top"
+                                        content={({ x, y, value }) => (
+                                            value != null ? (
+                                                <text x={x} y={Number(y) - 10} fill="#74c0fc" fontSize={10} textAnchor="middle">
+                                                    {value}spm
+                                                </text>
+                                            ) : null
+                                        )}
+                                    />
+                                </Line>
+                            )}
+
+                            {/* Cadence Line (Cycling only - rpm) */}
+                            {chartOptions.showCadence && activityType === 'cycling' && (
+                                <Line
+                                    yAxisId="right"
+                                    type="monotone"
+                                    dataKey="avgCadence"
+                                    name="케이던스"
+                                    stroke="#74c0fc"
+                                    strokeWidth={2}
+                                    dot={{ r: 3, fill: '#74c0fc' }}
+                                    connectNulls={true}
+                                >
+                                    <LabelList
+                                        dataKey="avgCadence"
+                                        position="top"
+                                        content={({ x, y, value }) => (
+                                            value != null ? (
+                                                <text x={x} y={Number(y) - 10} fill="#74c0fc" fontSize={10} textAnchor="middle">
+                                                    {value}rpm
+                                                </text>
+                                            ) : null
+                                        )}
+                                    />
+                                </Line>
+                            )}
+
+                            {/* Power Line (Cycling only) */}
+                            {chartOptions.showPower && activityType === 'cycling' && (
+                                <Line
+                                    yAxisId="right"
+                                    type="monotone"
+                                    dataKey="avgPower"
+                                    name="파워"
+                                    stroke="#ffd43b"
+                                    strokeWidth={2}
+                                    dot={{ r: 3, fill: '#ffd43b' }}
+                                    connectNulls={true}
+                                >
+                                    <LabelList
+                                        dataKey="avgPower"
+                                        position="top"
+                                        content={({ x, y, value }) => (
+                                            value != null ? (
+                                                <text x={x} y={Number(y) - 10} fill="#ffd43b" fontSize={10} textAnchor="middle">
+                                                    {value}W
+                                                </text>
+                                            ) : null
+                                        )}
+                                    />
+                                </Line>
+                            )}
+
+                            {/* SWOLF Line (Swimming only) */}
+                            {chartOptions.showSwolf && activityType === 'swimming' && (
+                                <Line
+                                    yAxisId="right"
+                                    type="monotone"
+                                    dataKey="avgSwolf"
+                                    name="SWOLF"
+                                    stroke="#69db7c"
+                                    strokeWidth={2}
+                                    dot={{ r: 3, fill: '#69db7c' }}
+                                    connectNulls={true}
+                                >
+                                    <LabelList
+                                        dataKey="avgSwolf"
+                                        position="top"
+                                        content={({ x, y, value }) => (
+                                            value != null ? (
+                                                <text x={x} y={Number(y) - 10} fill="#69db7c" fontSize={10} textAnchor="middle">
+                                                    {value}
+                                                </text>
+                                            ) : null
+                                        )}
+                                    />
+                                </Line>
+                            )}
                         </ComposedChart>
                     </ResponsiveContainer>
                 </div>
@@ -702,18 +1121,50 @@ export function MyWorkoutTab() {
                                         <Text size="sm">{data.label}</Text>
                                     </Group>
                                     <Group gap={4} style={{ textAlign: 'right' }}>
-                                        <Text size="sm" fw={700} style={{ minWidth: 60, display: 'inline-block', textAlign: 'right' }}>{data.actual.toLocaleString()}</Text>
-                                        <Text size="sm" c="dimmed"> / {data.target.toLocaleString()} {data.unit}</Text>
-                                        <Text size="sm" c={data.actual >= data.target ? 'teal' : 'blue'} ml="xs" style={{ minWidth: 45, display: 'inline-block', textAlign: 'right' }}>({Math.round((data.actual / data.target) * 100)}%)</Text>
+                                        {data.hasGoal ? (
+                                            <>
+                                                <Text size="sm" fw={700} style={{ minWidth: 60, display: 'inline-block', textAlign: 'right' }}>{data.actual.toLocaleString()}</Text>
+                                                <Text size="sm" c="dimmed"> / {data.target.toLocaleString()} {data.unit}</Text>
+                                                <Text size="sm" c={data.actual >= data.target ? 'teal' : 'blue'} ml="xs" style={{ minWidth: 45, display: 'inline-block', textAlign: 'right' }}>({Math.round((data.actual / data.target) * 100)}%)</Text>
+                                            </>
+                                        ) : (
+                                            <Text size="sm" c="dimmed" fs="italic">목표 미설정</Text>
+                                        )}
                                     </Group>
                                 </Group>
                             ))
                         }
                     </Stack >
 
+                    {/* Speech bubble prompt when goals are missing */}
+                    {hasAnyMissingGoal && (
+                        <Paper
+                            p="md"
+                            mt="lg"
+                            withBorder
+                            radius="md"
+                            style={{
+                                backgroundColor: '#fff9db',
+                                borderColor: '#fab005',
+                                position: 'relative'
+                            }}
+                        >
+                            <Group gap="xs" align="center">
+                                <Text size="sm" c="orange.8">
+                                    💬 운동 목표를 설정하면 달성률을 확인할 수 있어요!
+                                </Text>
+                            </Group>
+                        </Paper>
+                    )}
+
                     <Center mt="xl">
-                        <Button variant="light" onClick={() => window.location.href = '/dashboard/profile'}>
-                            목표 설정 하러가기
+                        <Button
+                            variant={hasAnyMissingGoal ? "gradient" : "light"}
+                            gradient={hasAnyMissingGoal ? { from: 'orange', to: 'yellow', deg: 45 } : undefined}
+                            size={hasAnyMissingGoal ? "md" : "sm"}
+                            onClick={() => window.location.href = `/dashboard/profile?tab=goals&activity=${activityType}`}
+                        >
+                            {ACTIVITY_LABELS[activityType]} 목표 설정하기
                         </Button>
                     </Center>
 
@@ -743,52 +1194,179 @@ export function MyWorkoutTab() {
                     body: { maxHeight: '70vh', overflowY: 'auto' },
                 }}
             >
-                {aiAdvice ? (
-                    <Paper p="md" withBorder>
-                        <ReactMarkdown
-                            components={{
-                                h1: ({ ...props }) => <Title order={2} mt="lg" mb="md" {...props as any} />,
-                                h2: ({ ...props }) => <Title order={3} mt="md" mb="sm" {...props as any} />,
-                                h3: ({ ...props }) => <Title order={4} mt="sm" mb="xs" {...props as any} />,
-                                p: ({ ...props }) => <Text mb="sm" {...props as any} />,
-                                ul: ({ ...props }) => <ul style={{ marginBottom: '1rem', paddingLeft: '1.5rem' }} {...props as any} />,
-                                ol: ({ ...props }) => <ol style={{ marginBottom: '1rem', paddingLeft: '1.5rem' }} {...props as any} />,
-                                li: ({ ...props }) => <li style={{ marginBottom: '0.5rem' }} {...props as any} />,
-                                strong: ({ ...props }) => <Text span fw={700} {...props as any} />,
-                            }}
-                        >
-                            {aiAdvice}
-                        </ReactMarkdown>
-                        {goalRecommendations.length > 0 && (
-                            <>
-                                <Divider my="lg" label="AI 목표 추천" labelPosition="center" />
-                                <Stack gap="sm">
-                                    {goalRecommendations.map((rec: any, idx: number) => (
-                                        <Paper key={idx} p="sm" withBorder bg="blue.0">
-                                            <Text size="sm" fw={600}>
-                                                {rec.activity_type} ({rec.period_type})
-                                            </Text>
-                                            <Text size="sm">
-                                                현재: {rec.current_target} → 추천: {rec.recommended_target}
-                                            </Text>
-                                            <Text size="xs" c="dimmed">{rec.reason}</Text>
-                                        </Paper>
-                                    ))}
-                                    <Button
-                                        onClick={handleApplyGoals}
-                                        loading={applyingGoals}
-                                        fullWidth
-                                    >
-                                        추천 목표 적용하기
-                                    </Button>
-                                </Stack>
-                            </>
-                        )}
-                    </Paper>
-                ) : (
+                {/* Loading previous coaching */}
+                {loadingPreviousCoaching ? (
                     <Center h={200}>
                         <Loader size="lg" />
                     </Center>
+                ) : (
+                    <Stack gap="md">
+                        {/* Previous coaching timestamp and new coaching button */}
+                        {previousCoaching && showingPrevious && !aiLoading && (
+                            <>
+                                <Paper p="sm" withBorder bg="gray.0" radius="md">
+                                    <Group justify="space-between" align="center">
+                                        <Text size="sm" c="dimmed">
+                                            📅 {new Date(previousCoaching.created_at).toLocaleString('ko-KR', {
+                                                year: 'numeric',
+                                                month: 'long',
+                                                day: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                            })} 코칭
+                                        </Text>
+                                        <Button
+                                            size="xs"
+                                            variant="gradient"
+                                            gradient={{ from: 'indigo', to: 'cyan', deg: 45 }}
+                                            onClick={handleRequestNewCoaching}
+                                            leftSection={<IconSparkles size={14} />}
+                                        >
+                                            새롭게 코칭받기
+                                        </Button>
+                                    </Group>
+                                </Paper>
+
+                                {/* Previous coaching content */}
+                                <Paper p="md" withBorder>
+                                    <ReactMarkdown
+                                        components={{
+                                            h1: ({ ...props }) => <Title order={2} mt="lg" mb="md" {...props as any} />,
+                                            h2: ({ ...props }) => <Title order={3} mt="md" mb="sm" {...props as any} />,
+                                            h3: ({ ...props }) => <Title order={4} mt="sm" mb="xs" {...props as any} />,
+                                            p: ({ ...props }) => <Text mb="sm" {...props as any} />,
+                                            ul: ({ ...props }) => <ul style={{ marginBottom: '1rem', paddingLeft: '1.5rem' }} {...props as any} />,
+                                            ol: ({ ...props }) => <ol style={{ marginBottom: '1rem', paddingLeft: '1.5rem' }} {...props as any} />,
+                                            li: ({ ...props }) => <li style={{ marginBottom: '0.5rem' }} {...props as any} />,
+                                            strong: ({ ...props }) => <Text span fw={700} {...props as any} />,
+                                        }}
+                                    >
+                                        {previousCoaching.content}
+                                    </ReactMarkdown>
+
+                                    {/* Goal recommendations from previous coaching */}
+                                    {previousCoaching.goal_recommendations && previousCoaching.goal_recommendations.length > 0 && (
+                                        <>
+                                            <Divider my="lg" label="AI 목표 추천" labelPosition="center" />
+                                            <Stack gap="sm">
+                                                {previousCoaching.goal_recommendations.map((rec: any, idx: number) => (
+                                                    <Paper key={idx} p="sm" withBorder bg="blue.0">
+                                                        <Text size="sm" fw={600}>
+                                                            {rec.activity_type} ({rec.period_type})
+                                                        </Text>
+                                                        <Text size="sm">
+                                                            현재: {rec.current_target} → 추천: {rec.recommended_target}
+                                                        </Text>
+                                                        <Text size="xs" c="dimmed">{rec.reason}</Text>
+                                                    </Paper>
+                                                ))}
+                                                <Button
+                                                    onClick={handleApplyGoals}
+                                                    loading={applyingGoals}
+                                                    fullWidth
+                                                >
+                                                    추천 목표 적용하기
+                                                </Button>
+                                            </Stack>
+                                        </>
+                                    )}
+                                </Paper>
+                            </>
+                        )}
+
+                        {/* No previous coaching - prompt for new */}
+                        {!previousCoaching && !aiLoading && !aiAdvice && (
+                            <Center py="xl">
+                                <Stack align="center" gap="md">
+                                    <IconSparkles size={48} color="gray" />
+                                    <Text c="dimmed" ta="center">
+                                        아직 코칭 기록이 없습니다.<br />
+                                        AI 코치에게 맞춤 조언을 받아보세요!
+                                    </Text>
+                                    <Button
+                                        variant="gradient"
+                                        gradient={{ from: 'indigo', to: 'cyan', deg: 45 }}
+                                        onClick={handleRequestNewCoaching}
+                                        leftSection={<IconSparkles size={16} />}
+                                        size="md"
+                                    >
+                                        AI 코칭 시작하기
+                                    </Button>
+                                </Stack>
+                            </Center>
+                        )}
+
+                        {/* Loading new coaching */}
+                        {aiLoading && !aiAdvice && (
+                            <Center h={200}>
+                                <Stack align="center" gap="sm">
+                                    <Loader size="lg" />
+                                    <Text size="sm" c="dimmed">AI가 분석 중입니다...</Text>
+                                </Stack>
+                            </Center>
+                        )}
+
+                        {/* Coaching content */}
+                        {aiAdvice && (
+                            <Paper p="md" withBorder>
+                                <ReactMarkdown
+                                    components={{
+                                        h1: ({ ...props }) => <Title order={2} mt="lg" mb="md" {...props as any} />,
+                                        h2: ({ ...props }) => <Title order={3} mt="md" mb="sm" {...props as any} />,
+                                        h3: ({ ...props }) => <Title order={4} mt="sm" mb="xs" {...props as any} />,
+                                        p: ({ ...props }) => <Text mb="sm" {...props as any} />,
+                                        ul: ({ ...props }) => <ul style={{ marginBottom: '1rem', paddingLeft: '1.5rem' }} {...props as any} />,
+                                        ol: ({ ...props }) => <ol style={{ marginBottom: '1rem', paddingLeft: '1.5rem' }} {...props as any} />,
+                                        li: ({ ...props }) => <li style={{ marginBottom: '0.5rem' }} {...props as any} />,
+                                        strong: ({ ...props }) => <Text span fw={700} {...props as any} />,
+                                    }}
+                                >
+                                    {aiAdvice}
+                                </ReactMarkdown>
+
+                                {/* Goal recommendations */}
+                                {goalRecommendations.length > 0 && (
+                                    <>
+                                        <Divider my="lg" label="AI 목표 추천" labelPosition="center" />
+                                        <Stack gap="sm">
+                                            {goalRecommendations.map((rec: any, idx: number) => (
+                                                <Paper key={idx} p="sm" withBorder bg="blue.0">
+                                                    <Text size="sm" fw={600}>
+                                                        {rec.activity_type} ({rec.period_type})
+                                                    </Text>
+                                                    <Text size="sm">
+                                                        현재: {rec.current_target} → 추천: {rec.recommended_target}
+                                                    </Text>
+                                                    <Text size="xs" c="dimmed">{rec.reason}</Text>
+                                                </Paper>
+                                            ))}
+                                            <Button
+                                                onClick={handleApplyGoals}
+                                                loading={applyingGoals}
+                                                fullWidth
+                                            >
+                                                추천 목표 적용하기
+                                            </Button>
+                                        </Stack>
+                                    </>
+                                )}
+
+                                {/* New coaching button after viewing current */}
+                                {!showingPrevious && !aiLoading && (
+                                    <Center mt="lg">
+                                        <Button
+                                            variant="light"
+                                            size="sm"
+                                            onClick={handleRequestNewCoaching}
+                                            leftSection={<IconSparkles size={14} />}
+                                        >
+                                            다시 코칭받기
+                                        </Button>
+                                    </Center>
+                                )}
+                            </Paper>
+                        )}
+                    </Stack>
                 )}
             </Modal>
         </Stack >

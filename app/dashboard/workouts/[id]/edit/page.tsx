@@ -48,6 +48,7 @@ export default function EditWorkoutPage() {
             avg_heart_rate: undefined as number | undefined,
             cadence: undefined as number | undefined,
             swolf: undefined as number | undefined,
+            avg_power: undefined as number | undefined, // for cycling
             sharing_type: 'public',
             shared_group_id: null,
         },
@@ -101,6 +102,7 @@ export default function EditWorkoutPage() {
                 avg_heart_rate: data.avg_heart_rate || undefined,
                 cadence: data.cadence || undefined,
                 swolf: data.swolf || undefined,
+                avg_power: data.avg_power || undefined,
                 sharing_type: data.sharing_type as any,
                 shared_group_id: data.shared_group_id,
             });
@@ -172,6 +174,7 @@ export default function EditWorkoutPage() {
                 avg_heart_rate: values.avg_heart_rate || null,
                 cadence: values.cadence || null,
                 swolf: values.swolf || null,
+                avg_power: values.avg_power || null,
                 sharing_type: values.sharing_type,
                 shared_group_id: values.shared_group_id || null,
             };
@@ -215,9 +218,12 @@ export default function EditWorkoutPage() {
     };
 
     const isSwimming = form.values.workout_type === 'swimming';
+    const isCycling = form.values.workout_type === 'cycling';
+    const isRunning = form.values.workout_type === 'running';
     const distanceUnit = isSwimming ? 'm' : 'km';
-    const showCadence = form.values.workout_type === 'running';
+    const showCadence = isRunning || isCycling;
     const showSwolf = isSwimming;
+    const showPower = isCycling;
 
     if (loading) return <Center h={400}><Loader /></Center>;
 
@@ -272,9 +278,17 @@ export default function EditWorkoutPage() {
 
                         {showCadence && (
                             <NumberInput
-                                label="케이던스 (선택)"
+                                label={isCycling ? "평균 케이던스 (rpm) (선택)" : "케이던스 (spm) (선택)"}
                                 min={0}
                                 {...form.getInputProps('cadence')}
+                            />
+                        )}
+
+                        {showPower && (
+                            <NumberInput
+                                label="평균 파워 (W) (선택)"
+                                min={0}
+                                {...form.getInputProps('avg_power')}
                             />
                         )}
 

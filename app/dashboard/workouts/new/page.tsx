@@ -52,6 +52,7 @@ function NewWorkoutContent() {
             avg_heart_rate: undefined as number | undefined,
             cadence: undefined as number | undefined,
             swolf: undefined as number | undefined,
+            avg_power: undefined as number | undefined, // for cycling
             sharing_type: 'public',
             shared_group_id: null,
         },
@@ -171,6 +172,7 @@ function NewWorkoutContent() {
                 avg_heart_rate: values.avg_heart_rate || null,
                 cadence: values.cadence || null,  // Clean inputs
                 swolf: values.swolf || null,      // Clean inputs
+                avg_power: values.avg_power || null, // for cycling
                 sharing_type: values.sharing_type,
                 shared_group_id: values.shared_group_id || null,
             };
@@ -217,9 +219,12 @@ function NewWorkoutContent() {
     };
 
     const isSwimming = form.values.workout_type === 'swimming';
+    const isCycling = form.values.workout_type === 'cycling';
+    const isRunning = form.values.workout_type === 'running';
     const distanceUnit = isSwimming ? 'm' : 'km';
-    const showCadence = form.values.workout_type === 'running';
+    const showCadence = isRunning || isCycling;
     const showSwolf = isSwimming;
+    const showPower = isCycling;
 
     return (
         <Paper withBorder shadow="sm" p="lg">
@@ -370,9 +375,17 @@ function NewWorkoutContent() {
 
                     {showCadence && (
                         <NumberInput
-                            label="케이던스 (선택)"
+                            label={isCycling ? "평균 케이던스 (rpm) (선택)" : "케이던스 (spm) (선택)"}
                             min={0}
                             {...form.getInputProps('cadence')}
+                        />
+                    )}
+
+                    {showPower && (
+                        <NumberInput
+                            label="평균 파워 (W) (선택)"
+                            min={0}
+                            {...form.getInputProps('avg_power')}
                         />
                     )}
 
