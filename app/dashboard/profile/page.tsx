@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
 import { Container, Title, Paper, Stack, Text, Group, Avatar, Badge, Button, Modal, TextInput, PasswordInput, FileButton, ActionIcon, Grid, SimpleGrid, LoadingOverlay, Divider, Tabs, Switch, NumberInput, Select, Textarea } from '@mantine/core';
 import { IconMail, IconPhone, IconShieldCheck, IconPencil, IconCamera, IconLock, IconUpload, IconCheck, IconTarget } from '@tabler/icons-react';
 import { useForm } from '@mantine/form';
@@ -48,7 +48,7 @@ const AVATAR_CATEGORIES = {
 };
 
 
-export default function ProfilePage() {
+function ProfileContent() {
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(false);
     const [avatarModalOpen, setAvatarModalOpen] = useState(false);
@@ -642,5 +642,13 @@ export default function ProfilePage() {
                 </Tabs>
             </Modal>
         </Container >
+    );
+}
+
+export default function ProfilePage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <ProfileContent />
+        </Suspense>
     );
 }
