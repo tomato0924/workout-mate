@@ -668,11 +668,22 @@ export default function CompetitionsPage() {
                                                 key={`reg-${rp.id}`}
                                                 className={`${styles.eventBadge} ${styles.eventBarSingle}`}
                                                 style={{ backgroundColor: '#e8590c', fontSize: '0.55rem', border: '1px dashed rgba(255,255,255,0.5)' }}
-                                                onClick={(e) => {
+                                                onClick={async (e) => {
                                                     e.stopPropagation();
-                                                    // Open competition detail panel
+                                                    // Try local first, otherwise fetch from API
                                                     const matchComp = competitions.find(c => c.id === rp.competition_id);
-                                                    if (matchComp) handleEventClick(matchComp);
+                                                    if (matchComp) {
+                                                        handleEventClick(matchComp);
+                                                    } else {
+                                                        // Competition is in a different month — fetch directly
+                                                        setDetailLoading(true);
+                                                        const detail = await fetchCompetition(rp.competition_id);
+                                                        if (detail) {
+                                                            setSelectedCompetition(detail);
+                                                            loadComments(detail.id);
+                                                        }
+                                                        setDetailLoading(false);
+                                                    }
                                                 }}
                                                 title={`[신청] ${rp.competition_name} - ${rp.category_name}${rp.registration_time ? ` ${rp.registration_time}~` : ''}`}
                                             >
