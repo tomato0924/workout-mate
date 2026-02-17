@@ -25,7 +25,7 @@ BEGIN
     FOR target_user IN
         SELECT id FROM public.user_profiles
         WHERE id != NEW.registered_by
-        AND status = 'approved'
+        AND approval_status = 'approved'
     LOOP
         INSERT INTO public.notifications (user_id, actor_id, type, competition_id, content)
         VALUES (
