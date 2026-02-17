@@ -1,10 +1,11 @@
 'use client';
 
 import { Container, Title, Tabs, Paper, Text } from '@mantine/core';
-import { IconChartBar, IconUsers, IconBuildingCommunity } from '@tabler/icons-react';
+import { IconChartBar, IconUsers, IconBuildingCommunity, IconCalendarEvent } from '@tabler/icons-react';
 import { AdminStats } from '@/components/admin/AdminStats';
 import { AdminUsers } from '@/components/admin/AdminUsers';
 import { AdminGroups } from '@/components/admin/AdminGroups';
+import { AdminCompetitions } from '@/components/admin/AdminCompetitions';
 
 export default function AdminPage() {
     return (
@@ -22,6 +23,9 @@ export default function AdminPage() {
                     <Tabs.Tab value="groups" leftSection={<IconBuildingCommunity size={16} />}>
                         크루 관리
                     </Tabs.Tab>
+                    <Tabs.Tab value="competitions" leftSection={<IconCalendarEvent size={16} />}>
+                        대회일정관리
+                    </Tabs.Tab>
                 </Tabs.List>
 
                 <Tabs.Panel value="stats">
@@ -35,7 +39,12 @@ export default function AdminPage() {
                 <Tabs.Panel value="groups">
                     <AdminGroups />
                 </Tabs.Panel>
+
+                <Tabs.Panel value="competitions">
+                    <AdminCompetitions />
+                </Tabs.Panel>
             </Tabs>
         </Container>
     );
 }
+

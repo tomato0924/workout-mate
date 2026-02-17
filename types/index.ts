@@ -2,6 +2,7 @@ export type UserRole = 'super_admin' | 'admin' | 'user';
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
 export type WorkoutType = 'running' | 'swimming' | 'cycling' | 'hiking';
 export type SharingType = 'public' | 'private' | 'group';
+export type CompetitionType = 'marathon' | 'triathlon' | 'granfondo' | 'trail_run' | 'other';
 
 export interface UserProfile {
     id: string;
@@ -126,8 +127,9 @@ export interface Notification {
     created_at: string;
     user_id: string;
     actor_id: string;
-    type: 'comment' | 'reaction';
-    workout_id: string;
+    type: 'comment' | 'reaction' | 'new_competition';
+    workout_id?: string | null;
+    competition_id?: string | null;
     content?: string;
     is_read: boolean;
     actor?: UserProfile;
@@ -159,3 +161,59 @@ export interface AiCoachingHistory {
     goal_recommendations: GoalRecommendation[] | null;
     created_at: string;
 }
+
+export interface Competition {
+    id: string;
+    competition_type: CompetitionType;
+    name: string;
+    abbreviation?: string | null;
+    start_date: string;
+    end_date: string;
+    start_time?: string | null;
+    location: string;
+    homepage_url?: string | null;
+    memo?: string | null;
+    registered_by: string;
+    created_at: string;
+    registrant?: UserProfile;
+    participants?: CompetitionParticipant[];
+    registration_periods?: CompetitionRegistrationPeriod[];
+}
+
+export interface CompetitionParticipant {
+    id: string;
+    competition_id: string;
+    user_id: string;
+    created_at: string;
+    user?: UserProfile;
+}
+
+export interface CompetitionRegistrationPeriod {
+    id: string;
+    competition_id: string;
+    category_name: string;
+    registration_date: string;
+    registration_time?: string | null;
+    created_at: string;
+}
+
+export interface CompetitionComment {
+    id: string;
+    competition_id: string;
+    user_id: string;
+    content: string;
+    created_at: string;
+    updated_at: string;
+    user?: UserProfile;
+    reactions?: CompetitionCommentReaction[];
+}
+
+export interface CompetitionCommentReaction {
+    id: string;
+    comment_id: string;
+    user_id: string;
+    emoji: string;
+    created_at: string;
+    user?: UserProfile;
+}
+

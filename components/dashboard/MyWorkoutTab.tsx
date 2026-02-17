@@ -4,11 +4,11 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { Title, Stack, Card, Text, Group, Select, SegmentedControl, Grid, Paper, RingProgress, Center, Loader, Button, Image, ActionIcon, Modal, Divider, Checkbox, ThemeIcon, Badge, Box, Affix, Transition } from '@mantine/core';
 import { Carousel, Embla } from '@mantine/carousel';
-import { IconTrophy, IconRun, IconSwimming, IconBike, IconWalk, IconMountain, IconPlus, IconChevronLeft, IconChevronRight, IconSparkles, IconFlame, IconChartBar, IconTarget, IconStar } from '@tabler/icons-react';
+import { IconTrophy, IconRun, IconSwimming, IconBike, IconWalk, IconMountain, IconPlus, IconChevronLeft, IconChevronRight, IconSparkles, IconFlame, IconChartBar, IconTarget, IconStar, IconCalendarEvent, IconTicket } from '@tabler/icons-react';
 import Autoplay from 'embla-carousel-autoplay';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import type { Workout, PersonalGoal } from '@/types';
+import type { Workout, PersonalGoal, Competition, CompetitionRegistrationPeriod } from '@/types';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
 import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, ReferenceLine, RadialBarChart, RadialBar, PolarAngleAxis, LabelList } from 'recharts';
@@ -43,6 +43,10 @@ export function MyWorkoutTab() {
     const [workouts, setWorkouts] = useState<Workout[]>([]);
     const [goals, setGoals] = useState<PersonalGoal[]>([]);
     const [loading, setLoading] = useState(true);
+
+    // Competition schedule state
+    const [upcomingCompetitions, setUpcomingCompetitions] = useState<Competition[]>([]);
+    const [upcomingRegPeriods, setUpcomingRegPeriods] = useState<(CompetitionRegistrationPeriod & { competition?: Competition })[]>([]);
 
     // Filters
     const [activityType, setActivityType] = useState<string>('running');
@@ -399,6 +403,29 @@ export function MyWorkoutTab() {
                 const latestWorkout = workoutData[workoutData.length - 1];
                 setActivityType(latestWorkout.workout_type);
             }
+
+            // Fetch upcoming competitions (within 30 days)
+            const todayStr = dayjs().format('YYYY-MM-DD');
+            const thirtyDaysLater = dayjs().add(30, 'day').format('YYYY-MM-DD');
+
+            const { data: compData } = await supabase
+                .from('competitions')
+                .select('*')
+                .lte('start_date', thirtyDaysLater)
+                .gte('end_date', todayStr)
+                .order('start_date', { ascending: true })
+                .limit(5);
+            setUpcomingCompetitions(compData || []);
+
+            // Fetch upcoming registration periods (within 30 days)
+            const { data: regData } = await supabase
+                .from('competition_registration_periods')
+                .select('*, competition:competitions(*)')
+                .gte('registration_date', todayStr)
+                .lte('registration_date', thirtyDaysLater)
+                .order('registration_date', { ascending: true })
+                .limit(5);
+            setUpcomingRegPeriods(regData || []);
 
             setLoading(false);
         };
@@ -854,7 +881,7 @@ export function MyWorkoutTab() {
                                         '#fd7e14, #f76707'
                                     })`,
                                 color: 'white',
-                                height: 180
+                                height: 210
                             }}
                         >
                             <Group justify="space-between" mb="md">
@@ -880,7 +907,7 @@ export function MyWorkoutTab() {
                                     ? 'linear-gradient(135deg, #845ef7, #7950f2)'
                                     : 'linear-gradient(135deg, #4c6ef5, #364fc7)',
                                 color: 'white',
-                                height: 180
+                                height: 210
                             }}
                         >
                             <Group justify="space-between" mb="md">
@@ -920,7 +947,7 @@ export function MyWorkoutTab() {
                                     ? 'linear-gradient(135deg, #fcc419, #fab005)'
                                     : 'linear-gradient(135deg, #adb5bd, #868e96)',
                                 color: workoutSummary.best.workout ? '#000' : 'white',
-                                height: 180
+                                height: 210
                             }}
                         >
                             <Group justify="space-between" mb="md">
@@ -962,7 +989,7 @@ export function MyWorkoutTab() {
                                         ? 'linear-gradient(135deg, #339af0, #1c7ed6)'
                                         : 'linear-gradient(135deg, #ff6b6b, #f03e3e)',
                                 color: 'white',
-                                height: 180
+                                height: 210
                             }}
                         >
                             <Group justify="space-between" mb="md">
@@ -979,10 +1006,60 @@ export function MyWorkoutTab() {
                             </Text>
                         </Paper>
                     </Carousel.Slide>
+
+                    {/* Card 5: Competition Schedule Alert */}
+                    <Carousel.Slide>
+                        <Paper
+                            p="lg"
+                            radius="lg"
+                            style={{
+                                background: (upcomingCompetitions.length > 0 || upcomingRegPeriods.length > 0)
+                                    ? 'linear-gradient(135deg, #e8590c, #d9480f)'
+                                    : 'linear-gradient(135deg, #adb5bd, #868e96)',
+                                color: 'white',
+                                height: 210
+                            }}
+                        >
+                            <Group justify="space-between" mb={4}>
+                                <Text size="sm" fw={500} style={{ opacity: 0.9 }}>대회일정 알림</Text>
+                                <Text size="xl">🏅</Text>
+                            </Group>
+                            {(upcomingCompetitions.length === 0 && upcomingRegPeriods.length === 0) ? (
+                                <>
+                                    <Text size="lg" fw={600} mb="xs">예정된 일정 없음</Text>
+                                    <Text size="sm" style={{ opacity: 0.9 }}>
+                                        한 달 이내에 예정된 대회나 신청일정이 없습니다.
+                                    </Text>
+                                </>
+                            ) : (
+                                <Stack gap={2}>
+                                    {upcomingRegPeriods.slice(0, 2).map(rp => (
+                                        <Group key={rp.id} gap={6} wrap="nowrap">
+                                            <IconTicket size={13} style={{ flexShrink: 0 }} />
+                                            <Text size="xs" fw={500} truncate style={{ lineHeight: 1.3 }}>
+                                                {dayjs(rp.registration_date).format('M/D')} 신청 · {(rp as any).competition?.name || rp.category_name}
+                                            </Text>
+                                        </Group>
+                                    ))}
+                                    {upcomingCompetitions.slice(0, 3).map(comp => (
+                                        <Group key={comp.id} gap={6} wrap="nowrap">
+                                            <IconCalendarEvent size={13} style={{ flexShrink: 0 }} />
+                                            <Text size="xs" fw={500} truncate style={{ lineHeight: 1.3 }}>
+                                                {dayjs(comp.start_date).format('M/D')} · {comp.name}
+                                            </Text>
+                                        </Group>
+                                    ))}
+                                    {(upcomingCompetitions.length + upcomingRegPeriods.length) > 5 && (
+                                        <Text size="xs" style={{ opacity: 0.8 }}>외 {upcomingCompetitions.length + upcomingRegPeriods.length - 5}건 더...</Text>
+                                    )}
+                                </Stack>
+                            )}
+                        </Paper>
+                    </Carousel.Slide>
                 </Carousel>
                 {/* Pagination Indicators */}
                 <Group justify="center" gap="xs" mt="sm">
-                    {[0, 1, 2, 3].map((index) => (
+                    {[0, 1, 2, 3, 4].map((index) => (
                         <Box
                             key={index}
                             style={{

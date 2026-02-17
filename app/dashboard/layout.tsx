@@ -10,6 +10,7 @@ import {
     IconShieldCheck,
     IconLogout,
     IconRun,
+    IconCalendarEvent,
 } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
 import type { UserProfile } from '@/types';
@@ -112,6 +113,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                     px="xs"
                                 >
                                     <Text span visibleFrom="xs">크루</Text>
+                                </Button>
+                                <Button
+                                    component={Link}
+                                    href="/dashboard/competitions"
+                                    variant={isActive('/dashboard/competitions') ? 'light' : 'subtle'}
+                                    color="blue"
+                                    leftSection={<IconCalendarEvent size={20} />}
+                                    size="sm"
+                                    px="xs"
+                                >
+                                    <Text span visibleFrom="xs">대회일정</Text>
                                 </Button>
                             </Group>
                         </Group>

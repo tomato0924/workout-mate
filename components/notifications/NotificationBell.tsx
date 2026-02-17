@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { ActionIcon, Indicator, Popover, Text, Stack, Group, Avatar, ScrollArea, ThemeIcon, Box } from '@mantine/core';
-import { IconBell, IconMessageCircle, IconHeart } from '@tabler/icons-react';
+import { IconBell, IconMessageCircle, IconHeart, IconCalendarEvent } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { formatDate } from '@/lib/utils/helpers';
@@ -72,16 +72,22 @@ export function NotificationBell() {
 
     const handleItemClick = (notification: Notification) => {
         setOpened(false);
-        router.push(`/dashboard/workouts/${notification.workout_id}`);
+        if (notification.type === 'new_competition' && notification.competition_id) {
+            router.push('/dashboard/competitions');
+        } else if (notification.workout_id) {
+            router.push(`/dashboard/workouts/${notification.workout_id}`);
+        }
     };
 
     const getIcon = (type: string) => {
         if (type === 'reaction') return <IconHeart size={14} />;
+        if (type === 'new_competition') return <IconCalendarEvent size={14} />;
         return <IconMessageCircle size={14} />;
     };
 
     const getColor = (type: string) => {
         if (type === 'reaction') return 'red';
+        if (type === 'new_competition') return 'orange';
         return 'blue';
     };
 
@@ -157,6 +163,8 @@ export function NotificationBell() {
                                             <Text size="sm" lineClamp={2} mb={4}>
                                                 {notification.type === 'reaction' ? (
                                                     <span>회원님의 운동 기록에 반응을 남겼습니다: {notification.content}</span>
+                                                ) : notification.type === 'new_competition' ? (
+                                                    <span>{notification.content}</span>
                                                 ) : (
                                                     <span>댓글을 남겼습니다: "{notification.content}"</span>
                                                 )}
