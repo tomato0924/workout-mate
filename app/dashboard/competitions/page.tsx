@@ -11,7 +11,7 @@ import {
     IconCalendarEvent, IconChevronLeft, IconChevronRight, IconPlus,
     IconMapPin, IconClock, IconLink, IconHandStop, IconCalendarDue,
     IconUser, IconNote, IconCheck, IconEdit, IconTrash, IconTicket,
-    IconMessage, IconMoodSmile, IconSend,
+    IconMessage, IconMoodSmile, IconSend, IconCalendar,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { createClient } from '@/lib/supabase/client';
@@ -415,6 +415,24 @@ export default function CompetitionsPage() {
                 }
             }
             notifications.show({ title: '수정 완료', message: '대회 정보가 수정되었습니다.', color: 'teal' });
+            const updatedCompId = editingCompetition.id;
+            setFormSubmitting(false);
+            resetForm();
+            setShowCreateModal(false);
+            setDuplicateWarning(null);
+
+            // Navigate to competition's month and show detail
+            const compDate = new Date(formStartDate);
+            setCurrentYear(compDate.getFullYear());
+            setCurrentMonth(compDate.getMonth() + 1);
+            await loadCompetitions();
+
+            // Fetch and show updated competition detail
+            const detail = await fetchCompetition(updatedCompId);
+            if (detail) {
+                setSelectedCompetition(detail);
+                loadComments(detail.id);
+            }
         } else {
             // Create new
             const result = await createCompetition(payload);
@@ -441,12 +459,27 @@ export default function CompetitionsPage() {
                 }
             }
             notifications.show({ title: '등록 완료', message: '대회가 등록되었습니다!', color: 'teal' });
-        }
+            const newCompId = result.competition?.id;
+            setFormSubmitting(false);
+            resetForm();
+            setShowCreateModal(false);
+            setDuplicateWarning(null);
 
-        setFormSubmitting(false);
-        resetForm();
-        setShowCreateModal(false);
-        loadCompetitions();
+            // Navigate to competition's month and show detail
+            const compDate = new Date(formStartDate);
+            setCurrentYear(compDate.getFullYear());
+            setCurrentMonth(compDate.getMonth() + 1);
+            await loadCompetitions();
+
+            // Fetch and show new competition detail
+            if (newCompId) {
+                const detail = await fetchCompetition(newCompId);
+                if (detail) {
+                    setSelectedCompetition(detail);
+                    loadComments(detail.id);
+                }
+            }
+        }
     };
 
     const handleForceCreate = async () => {
@@ -481,10 +514,25 @@ export default function CompetitionsPage() {
         }
         setFormSubmitting(false);
         notifications.show({ title: '등록 완료', message: '대회가 등록되었습니다!', color: 'teal' });
+        const newCompId = result.competition?.id;
         resetForm();
         setShowCreateModal(false);
         setDuplicateWarning(null);
-        loadCompetitions();
+
+        // Navigate to competition's month and show detail
+        const compDate = new Date(formStartDate);
+        setCurrentYear(compDate.getFullYear());
+        setCurrentMonth(compDate.getMonth() + 1);
+        await loadCompetitions();
+
+        // Fetch and show new competition detail
+        if (newCompId) {
+            const detail = await fetchCompetition(newCompId);
+            if (detail) {
+                setSelectedCompetition(detail);
+                loadComments(detail.id);
+            }
+        }
     };
 
     // Delete existing registration period
@@ -589,9 +637,11 @@ export default function CompetitionsPage() {
                     <ActionIcon variant="subtle" onClick={goToNextMonth} size="lg">
                         <IconChevronRight size={20} />
                     </ActionIcon>
-                    <Button variant="light" size="xs" onClick={goToToday}>
-                        오늘
-                    </Button>
+                    <Tooltip label="오늘로 이동">
+                        <ActionIcon variant="light" onClick={goToToday} size="lg">
+                            <IconCalendar size={18} />
+                        </ActionIcon>
+                    </Tooltip>
                 </div>
 
                 {/* Weekday header */}
