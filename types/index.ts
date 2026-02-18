@@ -217,3 +217,15 @@ export interface CompetitionCommentReaction {
     user?: UserProfile;
 }
 
+export interface Announcement {
+    id: string;
+    title: string;
+    content: string;
+    is_popup: boolean;
+    is_active: boolean;
+    created_by: string;
+    created_at: string;
+    updated_at: string;
+    author?: UserProfile;
+}
+

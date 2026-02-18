@@ -15,6 +15,7 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import type { UserProfile } from '@/types';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { AnnouncementPopup } from '@/components/announcements/AnnouncementPopup';
 import Link from 'next/link';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -189,6 +190,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <Container size="lg" p={0}>
                     {children}
                 </Container>
+                {profile && <AnnouncementPopup />}
             </AppShell.Main>
         </AppShell>
     );

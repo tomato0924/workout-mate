@@ -1,11 +1,12 @@
 'use client';
 
 import { Container, Title, Tabs, Paper, Text } from '@mantine/core';
-import { IconChartBar, IconUsers, IconBuildingCommunity, IconCalendarEvent } from '@tabler/icons-react';
+import { IconChartBar, IconUsers, IconBuildingCommunity, IconCalendarEvent, IconSpeakerphone } from '@tabler/icons-react';
 import { AdminStats } from '@/components/admin/AdminStats';
 import { AdminUsers } from '@/components/admin/AdminUsers';
 import { AdminGroups } from '@/components/admin/AdminGroups';
 import { AdminCompetitions } from '@/components/admin/AdminCompetitions';
+import { AdminAnnouncements } from '@/components/admin/AdminAnnouncements';
 
 export default function AdminPage() {
     return (
@@ -26,6 +27,9 @@ export default function AdminPage() {
                     <Tabs.Tab value="competitions" leftSection={<IconCalendarEvent size={16} />}>
                         대회일정관리
                     </Tabs.Tab>
+                    <Tabs.Tab value="announcements" leftSection={<IconSpeakerphone size={16} />}>
+                        공지사항
+                    </Tabs.Tab>
                 </Tabs.List>
 
                 <Tabs.Panel value="stats">
@@ -42,6 +46,10 @@ export default function AdminPage() {
 
                 <Tabs.Panel value="competitions">
                     <AdminCompetitions />
+                </Tabs.Panel>
+
+                <Tabs.Panel value="announcements">
+                    <AdminAnnouncements />
                 </Tabs.Panel>
             </Tabs>
         </Container>
