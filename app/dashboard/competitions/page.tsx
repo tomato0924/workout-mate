@@ -11,7 +11,7 @@ import {
     IconCalendarEvent, IconChevronLeft, IconChevronRight, IconPlus,
     IconMapPin, IconClock, IconLink, IconHandStop, IconCalendarDue,
     IconUser, IconNote, IconCheck, IconEdit, IconTrash, IconTicket,
-    IconMessage, IconMoodSmile, IconSend, IconCalendar, IconFilter, IconInfoCircle,
+    IconMessage, IconMoodSmile, IconSend, IconCalendar, IconFilter, IconInfoCircle, IconPencil,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { createClient } from '@/lib/supabase/client';
@@ -152,6 +152,9 @@ export default function CompetitionsPage() {
     // Registration period form (within create/edit modal)
     const [regPeriodForms, setRegPeriodForms] = useState<{ category_name: string; registration_date: string; registration_time: string }[]>([]);
     const [existingRegPeriods, setExistingRegPeriods] = useState<CompetitionRegistrationPeriod[]>([]);
+
+    // Touch swipe state for calendar
+    const [calTouchStart, setCalTouchStart] = useState<number | null>(null);
 
     // Comments state
     const [comments, setComments] = useState<CompetitionComment[]>([]);
@@ -606,7 +609,6 @@ export default function CompetitionsPage() {
                 <Text fw={600} size="sm" c="dimmed">대회 유형 선택</Text>
             </Group>
             <div className={styles.filterBar}>
-                <Text className={styles.filterLabel}>유형:</Text>
                 {ALL_COMPETITION_TYPES.map(type => {
                     const isActive = activeFilters.includes(type);
                     const color = COMPETITION_TYPE_COLORS[type];
@@ -633,7 +635,18 @@ export default function CompetitionsPage() {
                 <IconCalendar size={20} color="var(--mantine-color-dimmed)" />
                 <Text fw={600} size="sm" c="dimmed">대회 캘린더</Text>
             </Group>
-            <Paper shadow="sm" radius="md" p="md" pos="relative">
+            <Paper shadow="sm" radius="md" p="md" pos="relative"
+                onTouchStart={(e) => setCalTouchStart(e.touches[0].clientX)}
+                onTouchEnd={(e) => {
+                    if (calTouchStart === null) return;
+                    const diff = e.changedTouches[0].clientX - calTouchStart;
+                    if (Math.abs(diff) > 60) {
+                        if (diff > 0) goToPrevMonth();
+                        else goToNextMonth();
+                    }
+                    setCalTouchStart(null);
+                }}
+            >
                 <LoadingOverlay visible={loading} loaderProps={{ type: 'dots' }} />
 
                 {/* Month header */}
@@ -725,7 +738,7 @@ export default function CompetitionsPage() {
                                             <div
                                                 key={`reg-${rp.id}`}
                                                 className={`${styles.eventBadge} ${styles.eventBarSingle}`}
-                                                style={{ backgroundColor: '#e8590c', fontSize: '0.55rem', border: '1px dashed rgba(255,255,255,0.5)' }}
+                                                style={{ backgroundColor: 'white', fontSize: '0.55rem', border: '1px solid #333', color: '#333' }}
                                                 onClick={async (e) => {
                                                     e.stopPropagation();
                                                     // Try local first, otherwise fetch from API
@@ -745,7 +758,7 @@ export default function CompetitionsPage() {
                                                 }}
                                                 title={`[신청] ${rp.competition_name} - ${rp.category_name}${rp.registration_time ? ` ${rp.registration_time}~` : ''}`}
                                             >
-                                                <IconTicket size={10} style={{ flexShrink: 0 }} />
+                                                <IconPencil size={10} style={{ flexShrink: 0 }} />
                                                 <span>신청 {regDisplayName}</span>
                                             </div>
                                         );
