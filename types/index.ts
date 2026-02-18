@@ -127,9 +127,10 @@ export interface Notification {
     created_at: string;
     user_id: string;
     actor_id: string;
-    type: 'comment' | 'reaction' | 'new_competition';
+    type: 'comment' | 'reaction' | 'new_competition' | 'new_announcement';
     workout_id?: string | null;
     competition_id?: string | null;
+    announcement_id?: string | null;
     content?: string;
     is_read: boolean;
     actor?: UserProfile;

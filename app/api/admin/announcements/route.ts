@@ -98,6 +98,31 @@ export async function POST(request: NextRequest) {
             .single();
 
         if (error) throw error;
+
+        // Send notification to all approved users
+        if (data) {
+            const { data: allUsers } = await supabase
+                .from('user_profiles')
+                .select('id')
+                .eq('approval_status', 'approved');
+
+            if (allUsers && allUsers.length > 0) {
+                const notificationRows = allUsers
+                    .filter(u => u.id !== user.id) // exclude the admin who created it
+                    .map(u => ({
+                        user_id: u.id,
+                        actor_id: user.id,
+                        type: 'new_announcement',
+                        announcement_id: data.id,
+                        content: `📢 ${title}`,
+                    }));
+
+                if (notificationRows.length > 0) {
+                    await supabase.from('notifications').insert(notificationRows);
+                }
+            }
+        }
+
         return NextResponse.json({ announcement: data });
     } catch (error) {
         console.error('Announcements POST error:', error);
