@@ -11,7 +11,7 @@ import {
     IconCalendarEvent, IconChevronLeft, IconChevronRight, IconPlus,
     IconMapPin, IconClock, IconLink, IconHandStop, IconCalendarDue,
     IconUser, IconNote, IconCheck, IconEdit, IconTrash, IconTicket,
-    IconMessage, IconMoodSmile, IconSend, IconCalendar,
+    IconMessage, IconMoodSmile, IconSend, IconCalendar, IconFilter, IconInfoCircle,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { createClient } from '@/lib/supabase/client';
@@ -600,7 +600,11 @@ export default function CompetitionsPage() {
                 </Button>
             </div>
 
-            {/* Filter bar */}
+            {/* Competition Type Filter Section */}
+            <Group gap="xs" mb="xs" mt="md">
+                <IconFilter size={20} color="var(--mantine-color-dimmed)" />
+                <Text fw={600} size="sm" c="dimmed">대회 유형 선택</Text>
+            </Group>
             <div className={styles.filterBar}>
                 <Text className={styles.filterLabel}>유형:</Text>
                 {ALL_COMPETITION_TYPES.map(type => {
@@ -624,7 +628,11 @@ export default function CompetitionsPage() {
                 })}
             </div>
 
-            {/* Calendar */}
+            {/* Calendar Section */}
+            <Group gap="xs" mb="xs" mt="lg">
+                <IconCalendar size={20} color="var(--mantine-color-dimmed)" />
+                <Text fw={600} size="sm" c="dimmed">대회 캘린더</Text>
+            </Group>
             <Paper shadow="sm" radius="md" p="md" pos="relative">
                 <LoadingOverlay visible={loading} loaderProps={{ type: 'dots' }} />
 
@@ -754,7 +762,15 @@ export default function CompetitionsPage() {
                 </div>
             </Paper>
 
-            {/* Detail panel */}
+            {/* Competition Detail Section */}
+            {selectedCompetition && (
+                <>
+                    <Group gap="xs" mb="xs" mt="lg">
+                        <IconInfoCircle size={20} color="var(--mantine-color-dimmed)" />
+                        <Text fw={600} size="sm" c="dimmed">대회 상세정보</Text>
+                    </Group>
+                </>
+            )}
             {selectedCompetition && (
                 <Paper shadow="sm" radius="md" p="sm" mt="sm" className={styles.detailPanel} pos="relative">
                     <LoadingOverlay visible={detailLoading} loaderProps={{ type: 'dots' }} />

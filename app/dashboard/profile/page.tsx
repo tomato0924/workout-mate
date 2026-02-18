@@ -75,12 +75,19 @@ function ProfileContent() {
     useEffect(() => {
         const tab = searchParams.get('tab');
         const activity = searchParams.get('activity');
+        const focus = searchParams.get('focus');
 
         if (tab === 'goals') {
             setGoalModalOpen(true);
             if (activity && ['running', 'swimming', 'cycling', 'hiking'].includes(activity)) {
                 setActiveTab(activity);
             }
+        }
+
+        // Handle focus=overall_goal parameter from AI Pacemaker redirect
+        if (focus === 'overall_goal') {
+            setGoalModalOpen(true);
+            setActiveTab('overall');
         }
     }, [searchParams]);
 

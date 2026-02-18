@@ -154,13 +154,39 @@ export function MyWorkoutTab() {
 
     // Open AI modal and load previous coaching if exists
     const handleAiAdvice = async () => {
-        setAiModalOpen(true);
-        setLoadingPreviousCoaching(true);
-        setShowingPrevious(true);
-        setAiAdvice('');
-        setGoalRecommendations([]);
-
         try {
+            // First, check if user has overall_goal set
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const { data: profile } = await supabase
+                .from('user_profiles')
+                .select('overall_goal')
+                .eq('id', user.id)
+                .single();
+
+            if (!profile?.overall_goal || profile.overall_goal.trim() === '') {
+                // Show alert and redirect to profile page
+                notifications.show({
+                    title: '종합목표 설정 필요',
+                    message: 'AI 페이스메이커를 사용하려면 먼저 종합목표를 등록해주세요. 프로필 페이지로 이동합니다.',
+                    color: 'orange',
+                    autoClose: 5000,
+                });
+                // Redirect to profile page after a short delay
+                setTimeout(() => {
+                    router.push('/dashboard/profile?focus=overall_goal');
+                }, 1500);
+                return;
+            }
+
+            // If overall_goal exists, proceed with opening AI modal
+            setAiModalOpen(true);
+            setLoadingPreviousCoaching(true);
+            setShowingPrevious(true);
+            setAiAdvice('');
+            setGoalRecommendations([]);
+
             // Fetch previous coaching history
             const response = await fetch('/api/ai-workout-advice', {
                 method: 'GET',
