@@ -6,10 +6,12 @@ import '@mantine/dates/styles.css';
 
 import { ColorSchemeScript, MantineProvider, mantineHtmlProps, createTheme } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
+import { FCMManager } from '@/components/notifications/FCMManager';
 
 export const metadata = {
     title: 'Workout Mate - 운동 메이트',
     description: '친구들과 함께하는 소셜 피트니스 플랫폼',
+    manifest: '/manifest.json',
 };
 
 const theme = createTheme({
@@ -34,6 +36,7 @@ export default function RootLayout({
             <body>
                 <MantineProvider theme={theme}>
                     <Notifications position="top-right" />
+                    <FCMManager />
                     {children}
                 </MantineProvider>
             </body>
