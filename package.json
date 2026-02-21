@@ -20,6 +20,7 @@
     "@supabase/ssr": "^0.6.0",
     "@supabase/supabase-js": "^2.47.0",
     "@tabler/icons-react": "^3.25.0",
+    "@vercel/analytics": "^1.6.1",
     "dayjs": "^1.11.13",
     "embla-carousel-autoplay": "^8.6.0",
     "embla-carousel-react": "^8.5.1",

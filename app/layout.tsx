@@ -8,6 +8,7 @@ import { ColorSchemeScript, MantineProvider, mantineHtmlProps, createTheme } fro
 import { Notifications } from '@mantine/notifications';
 import { FCMManager } from '@/components/notifications/FCMManager';
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
+import { Analytics } from '@vercel/analytics/react';
 
 export const metadata = {
     title: 'Workout Mate - 운동 메이트',
@@ -40,6 +41,7 @@ export default function RootLayout({
                     <FCMManager />
                     <InstallPrompt />
                     {children}
+                    <Analytics />
                 </MantineProvider>
             </body>
         </html>
