@@ -7,6 +7,7 @@ import '@mantine/dates/styles.css';
 import { ColorSchemeScript, MantineProvider, mantineHtmlProps, createTheme } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { FCMManager } from '@/components/notifications/FCMManager';
+import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 
 export const metadata = {
     title: 'Workout Mate - 운동 메이트',
@@ -37,6 +38,7 @@ export default function RootLayout({
                 <MantineProvider theme={theme}>
                     <Notifications position="top-right" />
                     <FCMManager />
+                    <InstallPrompt />
                     {children}
                 </MantineProvider>
             </body>
