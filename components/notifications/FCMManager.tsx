@@ -35,7 +35,7 @@ export function FCMManager() {
                 onClose={() => setShowPrompt(false)}
                 size="lg"
                 radius="md"
-                position={{ bottom: 20, right: 20 }}
+                position={{ top: 20, right: 20 }}
             >
                 <Group align="flex-start">
                     <IconBellRinging size={24} color="#228be6" />
