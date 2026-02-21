@@ -203,7 +203,7 @@ export default function CompetitionsPage() {
         const startStr = formatDateStr(startDate);
         const endStr = formatDateStr(endDate);
 
-        const periods = await fetchRegistrationPeriodsByDateRange(startStr, endStr);
+        const periods = await fetchRegistrationPeriodsByDateRange(startStr, endStr, activeFilters);
         const mapped: RegPeriodCalendarItem[] = periods.map(p => ({
             id: p.id,
             competition_id: p.competition_id,

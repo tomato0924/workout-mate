@@ -318,18 +318,26 @@ export async function deleteRegistrationPeriod(id: string): Promise<{ error?: st
 // Fetch registration periods that fall within a date range (for calendar display)
 export async function fetchRegistrationPeriodsByDateRange(
     startDate: string,
-    endDate: string
+    endDate: string,
+    types?: CompetitionType[]
 ): Promise<(CompetitionRegistrationPeriod & { competition?: Competition })[]> {
     const supabase = createClient();
-    const { data, error } = await supabase
+
+    let query = supabase
         .from('competition_registration_periods')
         .select(`
             *,
-            competition:competitions(*)
+            competition:competitions!inner(*)
         `)
         .gte('registration_date', startDate)
         .lte('registration_date', endDate)
         .order('registration_date', { ascending: true });
+
+    if (types && types.length > 0 && types.length < ALL_COMPETITION_TYPES.length) {
+        query = query.in('competition.competition_type', types);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
         console.error('Error fetching registration periods:', error);
