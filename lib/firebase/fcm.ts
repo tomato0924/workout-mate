@@ -91,9 +91,10 @@ export async function requestNotificationPermissionAndSaveToken(): Promise<
 
         // FCM 토큰 발급
         const VAPID_KEY = 'BGAXbzNoJL8ssp85lHvm4E0jRV94zWkw4gy8z_QRRcDkKwu9W_YM_Hj-zqjPDVrjKWqGzU5gPVepuixO-DgQ5ik';
+        const registration = await navigator.serviceWorker.ready;
         const token = await getToken(messaging, {
             vapidKey: VAPID_KEY,
-            serviceWorkerRegistration: await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js'),
+            serviceWorkerRegistration: registration,
         });
 
         if (token) {

@@ -370,10 +370,15 @@ function ProfileContent() {
                         notifications.show({ title: '알림 설정 안내', message: '브라우저 설정에서 알림 권한을 직접 허용해야 합니다.', color: 'red' });
                     } else if (result === 'ios-not-installed') {
                         notifications.show({ title: '안내', message: 'iOS 기기에서는 홈 화면에 앱을 추가해야 알림을 받을 수 있습니다.', color: 'yellow' });
+                    } else {
+                        // result === 'unsupported' or otherwise failed
+                        notifications.show({ title: '오류', message: '기기 환경으로 인해 푸시 알림을 지원하지 않거나 오류가 발생했습니다.', color: 'red' });
                     }
                 } finally {
                     setLoading(false);
                 }
+            } else {
+                notifications.show({ title: '알림 설정 안내', message: '브라우저에서 알림을 지원하지 않습니다.', color: 'red' });
             }
         } else {
             // 알림 끄기
