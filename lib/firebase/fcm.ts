@@ -91,7 +91,7 @@ export async function requestNotificationPermissionAndSaveToken(): Promise<
 
         // FCM 토큰 발급
         const VAPID_KEY = 'BGAXbzNoJL8ssp85lHvm4E0jRV94zWkw4gy8z_QRRcDkKwu9W_YM_Hj-zqjPDVrjKWqGzU5gPVepuixO-DgQ5ik';
-        const registration = await navigator.serviceWorker.ready;
+        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/' });
         const token = await getToken(messaging, {
             vapidKey: VAPID_KEY,
             serviceWorkerRegistration: registration,
@@ -113,9 +113,10 @@ export async function requestNotificationPermissionAndSaveToken(): Promise<
         }
 
         return 'granted';
-    } catch (error) {
+    } catch (error: any) {
         console.error('[FCM] Error initializing FCM:', error);
-        return 'unsupported';
+        // 클라이언트에서 에러 원인을 파악할 수 있도록 특수한 문자열 반환
+        return `unsupported:${error?.message || 'Unknown Error'}` as any;
     }
 }
 

@@ -372,7 +372,10 @@ function ProfileContent() {
                         notifications.show({ title: '안내', message: 'iOS 기기에서는 홈 화면에 앱을 추가해야 알림을 받을 수 있습니다.', color: 'yellow' });
                     } else {
                         // result === 'unsupported' or otherwise failed
-                        notifications.show({ title: '오류', message: '기기 환경으로 인해 푸시 알림을 지원하지 않거나 오류가 발생했습니다.', color: 'red' });
+                        const errorMsg = result.toString().startsWith('unsupported:')
+                            ? result.toString().split('unsupported:')[1]
+                            : '기기 환경으로 인해 푸시 알림을 지원하지 않거나 오류가 발생했습니다.';
+                        notifications.show({ title: '오류', message: `알림 설정 실패: ${errorMsg}`, color: 'red' });
                     }
                 } finally {
                     setLoading(false);
