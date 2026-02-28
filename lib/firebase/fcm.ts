@@ -67,7 +67,7 @@ export async function requestNotificationPermissionAndSaveToken(): Promise<
     try {
         // 동적 import (서버 사이드 렌더링 방지)
         const { initializeApp, getApps } = await import('firebase/app');
-        const { getMessaging, getToken, onMessage } = await import('firebase/messaging');
+        const { getMessaging, getToken, onMessage, deleteToken } = await import('firebase/messaging');
 
         const firebaseConfig = {
             apiKey: "AIzaSyAcYoBrEmVPairEKhjQBnk0xwo6gKS4u7U",
@@ -92,10 +92,43 @@ export async function requestNotificationPermissionAndSaveToken(): Promise<
         // FCM 토큰 발급
         const VAPID_KEY = 'BGAXbzNoJL8ssp85lHvm4E0jRV94zWkw4gy8z_QRRcDkKwu9W_YM_Hj-zqjPDVrjKWqGzU5gPVepuixO-DgQ5ik';
         const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/' });
-        const token = await getToken(messaging, {
-            vapidKey: VAPID_KEY,
-            serviceWorkerRegistration: registration,
-        });
+        await navigator.serviceWorker.ready;
+
+        let token: string | undefined;
+        try {
+            token = await getToken(messaging, {
+                vapidKey: VAPID_KEY,
+                serviceWorkerRegistration: registration,
+            });
+        } catch (initialErr: any) {
+            console.warn('[FCM] First getToken attempt failed. Cleaning up stale push subscriptions...', initialErr);
+
+            // 기존 브라우저 Push 구독 및 Firebase 로컬 토큰 완전 삭제 시도
+            if (registration && registration.pushManager) {
+                try {
+                    const localSub = await registration.pushManager.getSubscription();
+                    if (localSub) {
+                        await localSub.unsubscribe();
+                        console.log('[FCM] Stale push subscription unsubscribed.');
+                    }
+                } catch (subErr) {
+                    console.warn('[FCM] Failed to unsubscribe push manager:', subErr);
+                }
+            }
+            try {
+                await deleteToken(messaging);
+                console.log('[FCM] Firebase local token deleted.');
+            } catch (delErr) {
+                console.warn('[FCM] deleteToken error ignored:', delErr);
+            }
+
+            // 캐시 초기화 후 재시도
+            console.log('[FCM] Retrying getToken after cleanup...');
+            token = await getToken(messaging, {
+                vapidKey: VAPID_KEY,
+                serviceWorkerRegistration: registration,
+            });
+        }
 
         if (token) {
             console.log('[FCM] Token obtained:', token);
