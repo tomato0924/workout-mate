@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { UserProfile, PersonalGoal } from '@/types';
 import { WORKOUT_TYPES } from '@/lib/utils/constants';
+import { requestNotificationPermissionAndSaveToken } from '@/lib/firebase/fcm';
 
 // Categorized Avatars
 const AVATAR_CATEGORIES = {
@@ -66,6 +67,9 @@ function ProfileContent() {
 
     // Auth check state
     const [currentUserEmail, setCurrentUserEmail] = useState('');
+
+    // Push notification setting
+    const [pushEnabled, setPushEnabled] = useState(false);
 
     const supabase = createClient();
     const router = useRouter();
@@ -221,6 +225,7 @@ function ProfileContent() {
         if (data) {
             setProfile(data);
             setOverallGoal(data.overall_goal || '');
+            setPushEnabled(!!data.fcm_token);
         }
     };
 
@@ -335,6 +340,62 @@ function ProfileContent() {
             notifications.show({ message: '정보 수정 실패', color: 'red' });
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleTogglePush = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const isChecked = e.currentTarget.checked;
+
+        if (isChecked) {
+            // 알림 켜기
+            if (typeof window !== 'undefined' && 'Notification' in window) {
+                if (Notification.permission === 'denied') {
+                    // 이미 브라우저에서 거절됨 -> 팝업 안내
+                    notifications.show({
+                        title: '알림 설정 안내',
+                        message: '브라우저 설정에서 알림 권한을 직접 허용해야 합니다.',
+                        color: 'red',
+                    });
+                    return;
+                }
+
+                setLoading(true);
+                try {
+                    const result = await requestNotificationPermissionAndSaveToken();
+                    if (result === 'granted') {
+                        setPushEnabled(true);
+                        if (profile) setProfile({ ...profile, fcm_token: 'dummy_token_placeholder' });
+                        notifications.show({ title: '알림 설정', message: '푸시 알림이 활성화되었습니다.', color: 'green' });
+                    } else if (result === 'denied') {
+                        notifications.show({ title: '알림 설정 안내', message: '브라우저 설정에서 알림 권한을 직접 허용해야 합니다.', color: 'red' });
+                    } else if (result === 'ios-not-installed') {
+                        notifications.show({ title: '안내', message: 'iOS 기기에서는 홈 화면에 앱을 추가해야 알림을 받을 수 있습니다.', color: 'yellow' });
+                    }
+                } finally {
+                    setLoading(false);
+                }
+            }
+        } else {
+            // 알림 끄기
+            if (!profile) return;
+            setLoading(true);
+            try {
+                const { error } = await supabase
+                    .from('user_profiles')
+                    .update({ fcm_token: null })
+                    .eq('id', profile.id);
+
+                if (error) throw error;
+
+                setPushEnabled(false);
+                setProfile({ ...profile, fcm_token: null });
+                notifications.show({ title: '알림 설정', message: '푸시 알림이 비활성화되었습니다.', color: 'blue' });
+            } catch (error) {
+                console.error(error);
+                notifications.show({ message: '알림 비활성화에 실패했습니다.', color: 'red' });
+            } finally {
+                setLoading(false);
+            }
         }
     };
 
@@ -524,6 +585,19 @@ function ProfileContent() {
                             required
                             {...editForm.getInputProps('nickname')}
                         />
+                        <Divider my="xs" />
+                        <Group justify="space-between">
+                            <div>
+                                <Text size="sm" fw={500}>푸시 알림 설정</Text>
+                                <Text size="xs" c="dimmed">새로운 반응이나 댓글 알림 받기</Text>
+                            </div>
+                            <Switch
+                                checked={pushEnabled}
+                                onChange={handleTogglePush}
+                                size="md"
+                            />
+                        </Group>
+                        <Divider my="xs" />
                         <Button type="submit">저장</Button>
                     </Stack>
                 </form>

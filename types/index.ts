@@ -14,6 +14,7 @@ export interface UserProfile {
     approval_status: ApprovalStatus;
     avatar_url?: string | null;
     overall_goal?: string | null;
+    fcm_token?: string | null;
     created_at: string;
 }
 

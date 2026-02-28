@@ -13,7 +13,9 @@ export function FCMManager() {
     useEffect(() => {
         // idle 상태이고 현재 알림이 허용(granted)되지 않았으며 거절(denied)도 아니라면 프롬프트 표시
         if (typeof window !== 'undefined' && 'Notification' in window) {
-            if (Notification.permission === 'default') {
+            const hasViewedPrompt = localStorage.getItem('notification_prompt_viewed') === 'true';
+
+            if (Notification.permission === 'default' && !hasViewedPrompt) {
                 // 즉시 띄우기보다는 유저가 화면을 좀 본 후에 띄우기 (예: 2초 뒤)
                 const timer = setTimeout(() => setShowPrompt(true), 2000);
                 return () => clearTimeout(timer);
@@ -23,40 +25,54 @@ export function FCMManager() {
 
     const handleAllowClick = async () => {
         setShowPrompt(false);
+        localStorage.setItem('notification_prompt_viewed', 'true');
         await requestPermission();
+    };
+
+    const handleDeclineClick = () => {
+        setShowPrompt(false);
+        localStorage.setItem('notification_prompt_viewed', 'true');
+        import('@mantine/notifications').then(({ notifications }) => {
+            notifications.show({
+                title: '알림 설정 안내',
+                message: "나중에 '내 정보 > 정보 수정' 메뉴에서 언제든 알림을 켤 수 있습니다.",
+                color: 'blue',
+            });
+        });
     };
 
     return (
         <>
-            {/* 1. Android / PC 등에서의 권한 요청 유도 다이얼로그 */}
-            <Dialog
+            {/* 1. Android / PC 등에서의 권한 요청 유도 모달 */}
+            <Modal
                 opened={showPrompt && !showIOSGuide}
-                withCloseButton
-                onClose={() => setShowPrompt(false)}
-                size="lg"
+                onClose={handleDeclineClick}
+                title={
+                    <Group gap="xs">
+                        <IconBellRinging size={24} color="#228be6" />
+                        <Text fw={700}>활동 알림 안내</Text>
+                    </Group>
+                }
+                centered
                 radius="md"
-                position={{ top: 20, right: 20 }}
             >
-                <Group align="flex-start">
-                    <IconBellRinging size={24} color="#228be6" />
-                    <div style={{ flex: 1 }}>
-                        <Text size="sm" fw={600} mb="xs">
-                            새로운 반응이나 댓글 알림을 받아보시겠어요?
-                        </Text>
-                        <Text size="xs" c="dimmed" mb="md">
-                            운동 기록에 친구들이 반응을 남기면 즉시 알려드립니다.
-                        </Text>
-                        <Group justify="flex-end">
-                            <Button variant="subtle" size="xs" onClick={() => setShowPrompt(false)}>
-                                나중에
-                            </Button>
-                            <Button size="xs" onClick={handleAllowClick} loading={status === 'loading'}>
-                                알림 켜기
-                            </Button>
-                        </Group>
-                    </div>
-                </Group>
-            </Dialog>
+                <Stack gap="md">
+                    <Text size="md" fw={600}>
+                        운동 메이트의 활동 알림을 받아보시겠어요?
+                    </Text>
+                    <Text size="sm" c="dimmed">
+                        운동 기록에 친구들이 반응을 남기거나 댓글을 달면 즉시 알려드립니다. 핵심적인 알림만 보내드려요!
+                    </Text>
+                    <Group justify="flex-end" mt="md">
+                        <Button variant="subtle" onClick={handleDeclineClick}>
+                            나중에 하기
+                        </Button>
+                        <Button onClick={handleAllowClick} loading={status === 'loading'}>
+                            지금 설정하기
+                        </Button>
+                    </Group>
+                </Stack>
+            </Modal>
 
             {/* 2. iOS 전용: 홈 화면 추가 안내 모달 */}
             <Modal
