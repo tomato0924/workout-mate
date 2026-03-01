@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
 // FCM 초기화가 완료되었는지 추적 (중복 초기화 방지)
@@ -45,6 +44,19 @@ function isInStandaloneMode(): boolean {
     );
 }
 
+// Firebase 설정 (프로젝트 공통)
+const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyAcYoBrEmVPairEKhjQBnk0xwo6gKS4u7U",
+    authDomain: "workout-mate-cb349.firebaseapp.com",
+    projectId: "workout-mate-cb349",
+    storageBucket: "workout-mate-cb349.firebasestorage.app",
+    messagingSenderId: "526754955918",
+    appId: "1:526754955918:web:3b252deea1b3bffdb87fdf",
+    measurementId: "G-E6HV46H5ZL"
+};
+
+const VAPID_KEY = 'BGAXbzNoJL8ssp85lHvm4E0jRV94zWkw4gy8z_QRRcDkKwu9W_YM_Hj-zqjPDVrjKWqGzU5gPVepuixO-DgQ5ik';
+
 /**
  * 알림 권한 요청 + FCM 토큰 획득 & 저장
  * @returns 'granted' | 'denied' | 'ios-not-installed' | 'unsupported'
@@ -66,21 +78,11 @@ export async function requestNotificationPermissionAndSaveToken(): Promise<
 
     try {
         // 동적 import (서버 사이드 렌더링 방지)
-        const { initializeApp, getApps, deleteApp } = await import('firebase/app');
-        const { getMessaging, getToken, onMessage, deleteToken } = await import('firebase/messaging');
+        const { initializeApp, getApps } = await import('firebase/app');
+        const { getMessaging, getToken, onMessage } = await import('firebase/messaging');
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyAcYoBrEmVPairEKhjQBnk0xwo6gKS4u7U",
-            authDomain: "workout-mate-cb349.firebaseapp.com",
-            projectId: "workout-mate-cb349",
-            storageBucket: "workout-mate-cb349.firebasestorage.app",
-            messagingSenderId: "526754955918",
-            appId: "1:526754955918:web:3b252deea1b3bffdb87fdf",
-            measurementId: "G-E6HV46H5ZL"
-        };
-
-        let app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-        let messaging = getMessaging(app);
+        const app = getApps().length === 0 ? initializeApp(FIREBASE_CONFIG) : getApps()[0];
+        const messaging = getMessaging(app);
 
         // 권한 요청
         const permission = await Notification.requestPermission();
@@ -89,79 +91,31 @@ export async function requestNotificationPermissionAndSaveToken(): Promise<
             return 'denied';
         }
 
+        // 서비스 워커가 준비될 때까지 대기
+        const registration = await navigator.serviceWorker.ready;
+
         // FCM 토큰 발급
-        const VAPID_KEY = 'BGAXbzNoJL8ssp85lHvm4E0jRV94zWkw4gy8z_QRRcDkKwu9W_YM_Hj-zqjPDVrjKWqGzU5gPVepuixO-DgQ5ik';
-        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/' });
-        await navigator.serviceWorker.ready;
-
-        let token: string | undefined;
-        try {
-            token = await getToken(messaging, {
-                vapidKey: VAPID_KEY,
-                serviceWorkerRegistration: registration,
-            });
-        } catch (initialErr: any) {
-            console.warn('[FCM] First getToken attempt failed. Cleaning up stale push subscriptions...', initialErr);
-
-            // 1. 기존 브라우저 Push 구독 완전 삭제 시도
-            if (registration && registration.pushManager) {
-                try {
-                    const localSub = await registration.pushManager.getSubscription();
-                    if (localSub) {
-                        await localSub.unsubscribe();
-                        console.log('[FCM] Stale push subscription unsubscribed.');
-                    }
-                } catch (subErr) {
-                    console.warn('[FCM] Failed to unsubscribe push manager:', subErr);
-                }
-            }
-
-            // 2. JS 메모리 캐시 및 Firebase 내부 상태 초기화를 위해 App 폭파 및 IndexedDB 강제 삭제
-            try {
-                await deleteApp(app);
-
-                if (typeof window !== 'undefined' && window.indexedDB) {
-                    window.indexedDB.deleteDatabase('firebase-messaging-database');
-                }
-                console.log('[FCM] Firebase App and IndexedDB completely reset.');
-
-                // 새로운 앱 인스턴스 및 메시징 객체 생성
-                app = initializeApp(firebaseConfig);
-                messaging = getMessaging(app);
-            } catch (resetErr) {
-                console.warn('[FCM] Hard reset failed:', resetErr);
-            }
-
-            // 캐시 초기화 및 브라우저 프로세스 동기화를 위해 약간 대기
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            // 캐시 완전 초기화 후 재시도
-            console.log('[FCM] Retrying getToken after extremely hard cleanup...');
-            token = await getToken(messaging, {
-                vapidKey: VAPID_KEY,
-                serviceWorkerRegistration: registration,
-            });
-        }
+        const token = await getToken(messaging, {
+            vapidKey: VAPID_KEY,
+            serviceWorkerRegistration: registration,
+        });
 
         if (token) {
             console.log('[FCM] Token obtained:', token);
             await saveTokenToServer(token);
         }
 
-        // 포그라운드 메시지 수신 설정 (앱이 열려 있을 때)
+        // 포그라운드 메시지 수신 설정 (앱이 열려 있을 때, 최초 1회만)
         if (!messagingInitialized) {
             messagingInitialized = true;
             onMessage(messaging, (payload) => {
                 console.log('[FCM] Foreground message received:', payload);
-                // 포그라운드에서는 In-app Notification Bell이 있으므로 별도 처리 불필요
-                // 필요하면 여기서 Mantine notifications.show() 호출 가능
             });
         }
 
         return 'granted';
     } catch (error: any) {
         console.error('[FCM] Error initializing FCM:', error);
-        // 클라이언트에서 에러 원인을 파악할 수 있도록 특수한 문자열 반환
         return `unsupported:${error?.message || 'Unknown Error'}` as any;
     }
 }
