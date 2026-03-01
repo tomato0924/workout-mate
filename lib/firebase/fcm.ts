@@ -66,7 +66,7 @@ export async function requestNotificationPermissionAndSaveToken(): Promise<
 
     try {
         // 동적 import (서버 사이드 렌더링 방지)
-        const { initializeApp, getApps } = await import('firebase/app');
+        const { initializeApp, getApps, deleteApp } = await import('firebase/app');
         const { getMessaging, getToken, onMessage, deleteToken } = await import('firebase/messaging');
 
         const firebaseConfig = {
@@ -79,8 +79,8 @@ export async function requestNotificationPermissionAndSaveToken(): Promise<
             measurementId: "G-E6HV46H5ZL"
         };
 
-        const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-        const messaging = getMessaging(app);
+        let app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+        let messaging = getMessaging(app);
 
         // 권한 요청
         const permission = await Notification.requestPermission();
@@ -103,7 +103,7 @@ export async function requestNotificationPermissionAndSaveToken(): Promise<
         } catch (initialErr: any) {
             console.warn('[FCM] First getToken attempt failed. Cleaning up stale push subscriptions...', initialErr);
 
-            // 기존 브라우저 Push 구독 및 Firebase 로컬 토큰 완전 삭제 시도
+            // 1. 기존 브라우저 Push 구독 완전 삭제 시도
             if (registration && registration.pushManager) {
                 try {
                     const localSub = await registration.pushManager.getSubscription();
@@ -115,15 +115,28 @@ export async function requestNotificationPermissionAndSaveToken(): Promise<
                     console.warn('[FCM] Failed to unsubscribe push manager:', subErr);
                 }
             }
+
+            // 2. JS 메모리 캐시 및 Firebase 내부 상태 초기화를 위해 App 폭파 및 IndexedDB 강제 삭제
             try {
-                await deleteToken(messaging);
-                console.log('[FCM] Firebase local token deleted.');
-            } catch (delErr) {
-                console.warn('[FCM] deleteToken error ignored:', delErr);
+                await deleteApp(app);
+
+                if (typeof window !== 'undefined' && window.indexedDB) {
+                    window.indexedDB.deleteDatabase('firebase-messaging-database');
+                }
+                console.log('[FCM] Firebase App and IndexedDB completely reset.');
+
+                // 새로운 앱 인스턴스 및 메시징 객체 생성
+                app = initializeApp(firebaseConfig);
+                messaging = getMessaging(app);
+            } catch (resetErr) {
+                console.warn('[FCM] Hard reset failed:', resetErr);
             }
 
-            // 캐시 초기화 후 재시도
-            console.log('[FCM] Retrying getToken after cleanup...');
+            // 캐시 초기화 및 브라우저 프로세스 동기화를 위해 약간 대기
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // 캐시 완전 초기화 후 재시도
+            console.log('[FCM] Retrying getToken after extremely hard cleanup...');
             token = await getToken(messaging, {
                 vapidKey: VAPID_KEY,
                 serviceWorkerRegistration: registration,
