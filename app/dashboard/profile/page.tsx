@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, Suspense } from 'react';
 import { Container, Title, Paper, Stack, Text, Group, Avatar, Badge, Button, Modal, TextInput, PasswordInput, FileButton, ActionIcon, Grid, SimpleGrid, LoadingOverlay, Divider, Tabs, Switch, NumberInput, Select, Textarea } from '@mantine/core';
-import { IconMail, IconPhone, IconShieldCheck, IconPencil, IconCamera, IconLock, IconUpload, IconCheck, IconTarget } from '@tabler/icons-react';
+import { IconMail, IconPhone, IconShieldCheck, IconPencil, IconCamera, IconLock, IconUpload, IconCheck, IconTarget, IconBellRinging, IconBellOff } from '@tabler/icons-react';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { createClient } from '@/lib/supabase/client';
@@ -56,6 +56,7 @@ function ProfileContent() {
     const [verifyModalOpen, setVerifyModalOpen] = useState(false);
     const [editInfoModalOpen, setEditInfoModalOpen] = useState(false);
     const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+    const [permissionGuideModalOpen, setPermissionGuideModalOpen] = useState(false);
 
     // Goal State
     const [goalModalOpen, setGoalModalOpen] = useState(false);
@@ -70,6 +71,14 @@ function ProfileContent() {
 
     // Push notification setting
     const [pushEnabled, setPushEnabled] = useState(false);
+    const [notificationPermission, setNotificationPermission] = useState<string>('default');
+
+    // 브라우저 알림 권한 상태 추적
+    useEffect(() => {
+        if (typeof window !== 'undefined' && 'Notification' in window) {
+            setNotificationPermission(Notification.permission);
+        }
+    }, [editInfoModalOpen, permissionGuideModalOpen]);
 
     const supabase = createClient();
     const router = useRouter();
@@ -350,12 +359,8 @@ function ProfileContent() {
             // 알림 켜기
             if (typeof window !== 'undefined' && 'Notification' in window) {
                 if (Notification.permission === 'denied') {
-                    // 이미 브라우저에서 거절됨 -> 팝업 안내
-                    notifications.show({
-                        title: '알림 설정 안내',
-                        message: '브라우저 설정에서 알림 권한을 직접 허용해야 합니다.',
-                        color: 'red',
-                    });
+                    // 이미 브라우저에서 거절됨 -> 가이드 모달 띄우기
+                    setPermissionGuideModalOpen(true);
                     return;
                 }
 
@@ -364,14 +369,15 @@ function ProfileContent() {
                     const result = await requestNotificationPermissionAndSaveToken();
                     if (result === 'granted') {
                         setPushEnabled(true);
-                        if (profile) setProfile({ ...profile, fcm_token: 'dummy_token_placeholder' });
+                        setNotificationPermission('granted');
+                        if (profile) setProfile({ ...profile, fcm_token: 'active' });
                         notifications.show({ title: '알림 설정', message: '푸시 알림이 활성화되었습니다.', color: 'green' });
                     } else if (result === 'denied') {
-                        notifications.show({ title: '알림 설정 안내', message: '브라우저 설정에서 알림 권한을 직접 허용해야 합니다.', color: 'red' });
+                        setNotificationPermission('denied');
+                        setPermissionGuideModalOpen(true);
                     } else if (result === 'ios-not-installed') {
                         notifications.show({ title: '안내', message: 'iOS 기기에서는 홈 화면에 앱을 추가해야 알림을 받을 수 있습니다.', color: 'yellow' });
                     } else {
-                        // result === 'unsupported' or otherwise failed
                         const errorMsg = result.toString().startsWith('unsupported:')
                             ? result.toString().split('unsupported:')[1]
                             : '기기 환경으로 인해 푸시 알림을 지원하지 않거나 오류가 발생했습니다.';
@@ -594,21 +600,96 @@ function ProfileContent() {
                             {...editForm.getInputProps('nickname')}
                         />
                         <Divider my="xs" />
-                        <Group justify="space-between">
-                            <div>
-                                <Text size="sm" fw={500}>푸시 알림 설정</Text>
-                                <Text size="xs" c="dimmed">새로운 반응이나 댓글 알림 받기</Text>
-                            </div>
-                            <Switch
-                                checked={pushEnabled}
-                                onChange={handleTogglePush}
-                                size="md"
-                            />
-                        </Group>
+                        <Stack gap="xs">
+                            <Group justify="space-between">
+                                <div>
+                                    <Text size="sm" fw={500}>푸시 알림 설정</Text>
+                                    <Text size="xs" c="dimmed">새로운 반응이나 댓글 알림 받기</Text>
+                                </div>
+                                <Switch
+                                    checked={pushEnabled}
+                                    onChange={handleTogglePush}
+                                    size="md"
+                                />
+                            </Group>
+                            {notificationPermission === 'denied' && (
+                                <Paper withBorder p="xs" radius="md" bg="red.0" style={{ cursor: 'pointer' }} onClick={() => setPermissionGuideModalOpen(true)}>
+                                    <Group gap="xs">
+                                        <IconBellOff size={16} color="#e03131" />
+                                        <Text size="xs" c="red.7" fw={500}>
+                                            브라우저에서 알림이 차단되어 있습니다. 터치하여 해제 방법을 확인하세요.
+                                        </Text>
+                                    </Group>
+                                </Paper>
+                            )}
+                            {notificationPermission === 'granted' && pushEnabled && (
+                                <Paper withBorder p="xs" radius="md" bg="green.0">
+                                    <Group gap="xs">
+                                        <IconBellRinging size={16} color="#2f9e44" />
+                                        <Text size="xs" c="green.7" fw={500}>
+                                            알림이 활성화되어 있습니다.
+                                        </Text>
+                                    </Group>
+                                </Paper>
+                            )}
+                        </Stack>
                         <Divider my="xs" />
                         <Button type="submit">저장</Button>
                     </Stack>
                 </form>
+            </Modal>
+
+            {/* Permission Guide Modal */}
+            <Modal
+                opened={permissionGuideModalOpen}
+                onClose={() => setPermissionGuideModalOpen(false)}
+                title={
+                    <Group gap="xs">
+                        <IconBellOff size={22} color="#e03131" />
+                        <Text fw={700}>알림 권한 설정 안내</Text>
+                    </Group>
+                }
+                centered
+                radius="md"
+            >
+                <Stack gap="md">
+                    <Text size="sm" c="dimmed">
+                        현재 브라우저에서 알림이 차단되어 있습니다. 아래 안내에 따라 직접 권한을 허용해주세요.
+                    </Text>
+
+                    <Paper withBorder p="md" radius="md" bg="blue.0">
+                        <Text size="sm" fw={600} mb="xs">📱 Android (Chrome)</Text>
+                        <Stack gap={4}>
+                            <Text size="xs">1. Chrome 주소창 왼쪽의 <b>🔒 자물쇠</b> 또는 <b>ⓘ 아이콘</b>을 터치합니다.</Text>
+                            <Text size="xs">2. <b>"권한"</b> 또는 <b>"사이트 설정"</b>을 선택합니다.</Text>
+                            <Text size="xs">3. <b>"알림"</b> 항목을 <b>"허용"</b>으로 변경합니다.</Text>
+                            <Text size="xs">4. 페이지를 새로고침한 후 다시 알림을 켜주세요.</Text>
+                        </Stack>
+                    </Paper>
+
+                    <Paper withBorder p="md" radius="md" bg="gray.0">
+                        <Text size="sm" fw={600} mb="xs">🍎 iPhone / iPad (Safari)</Text>
+                        <Stack gap={4}>
+                            <Text size="xs">1. iPhone <b>설정</b> 앱을 엽니다.</Text>
+                            <Text size="xs">2. <b>Safari</b> (또는 홈화면에 추가한 앱 이름)를 선택합니다.</Text>
+                            <Text size="xs">3. <b>"알림"</b>을 <b>"허용"</b>으로 변경합니다.</Text>
+                            <Text size="xs">4. 앱을 다시 열고 알림을 켜주세요.</Text>
+                        </Stack>
+                    </Paper>
+
+                    <Paper withBorder p="md" radius="md" bg="grape.0">
+                        <Text size="sm" fw={600} mb="xs">💻 PC (Chrome / Edge)</Text>
+                        <Stack gap={4}>
+                            <Text size="xs">1. 주소창 왼쪽의 <b>🔒 자물쇠 아이콘</b>을 클릭합니다.</Text>
+                            <Text size="xs">2. <b>"사이트 설정"</b>을 클릭합니다.</Text>
+                            <Text size="xs">3. <b>"알림"</b> 항목을 <b>"허용"</b>으로 변경합니다.</Text>
+                        </Stack>
+                    </Paper>
+
+                    <Button fullWidth mt="xs" onClick={() => setPermissionGuideModalOpen(false)}>
+                        확인했습니다
+                    </Button>
+                </Stack>
             </Modal>
 
             {/* Change Password Modal */}
