@@ -706,10 +706,10 @@ export default function CompetitionsPage() {
                                                 onClick={(e) => { e.stopPropagation(); handleEventClick(event); }}
                                             >
                                                 {(pos === 'start' || pos === 'single') && (
-                                                    <>
-                                                        <span>{displayName}</span>
+                                                    <div className={styles.eventContent}>
+                                                        <span className={styles.eventName} title={event.name}>{displayName}</span>
                                                         {event.participants && event.participants.length > 0 && (
-                                                            <span className={styles.participantAvatars}>
+                                                            <div className={styles.participantAvatars}>
                                                                 {event.participants.slice(0, 2).map(p => (
                                                                     <Avatar key={p.id} size={14} radius="xl" src={p.user?.avatar_url} color="blue">
                                                                         {p.user?.nickname?.charAt(0)}
@@ -720,9 +720,9 @@ export default function CompetitionsPage() {
                                                                         +{event.participants.length - 2}
                                                                     </Avatar>
                                                                 )}
-                                                            </span>
+                                                            </div>
                                                         )}
-                                                    </>
+                                                    </div>
                                                 )}
                                                 {pos === 'middle' && (<span style={{ opacity: 0 }}>-</span>)}
                                                 {pos === 'end' && (<span style={{ fontSize: '0.55rem', opacity: 0.8 }}>▸</span>)}
@@ -758,8 +758,10 @@ export default function CompetitionsPage() {
                                                 }}
                                                 title={`[신청] ${rp.competition_name} - ${rp.category_name}${rp.registration_time ? ` ${rp.registration_time}~` : ''}`}
                                             >
-                                                <IconPencil size={10} style={{ flexShrink: 0 }} />
-                                                <span>신청 {regDisplayName}</span>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
+                                                    <IconPencil size={10} style={{ flexShrink: 0 }} />
+                                                    <span className={styles.eventName}>신청 {regDisplayName}</span>
+                                                </div>
                                             </div>
                                         );
                                     })}
