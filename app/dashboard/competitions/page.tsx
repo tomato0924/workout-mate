@@ -864,7 +864,7 @@ export default function CompetitionsPage() {
                         {selectedCompetition.memo && (
                             <dl className={styles.detailField}>
                                 <dt><IconNote size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> 메모</dt>
-                                <dd>{selectedCompetition.memo}</dd>
+                                <dd style={{ whiteSpace: 'pre-wrap' }}>{selectedCompetition.memo}</dd>
                             </dl>
                         )}
                         <dl className={styles.detailField}>
