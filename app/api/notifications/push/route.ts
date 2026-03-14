@@ -45,16 +45,44 @@ export async function POST(request: Request) {
 
         const actorName = actorProfile?.nickname || '누군가';
 
+        // 2.5 알림 대상 운동 기록 조회하여 요약 생성
+        const { data: workoutData } = await supabase
+            .from('workouts')
+            .select('activity_type, content')
+            .eq('id', record.workout_id)
+            .single();
+
+        let workoutSummary = '';
+        if (workoutData) {
+            const typeMapping: Record<string, string> = {
+                running: '러닝',
+                swimming: '수영',
+                cycling: '사이클',
+                hiking: '등산'
+            };
+            const typeLabel = typeMapping[workoutData.activity_type] || '운동';
+            
+            const contentPreview = workoutData.content 
+                ? (workoutData.content.length > 20 ? workoutData.content.substring(0, 20) + '...' : workoutData.content)
+                : '';
+                
+            if (contentPreview) {
+                workoutSummary = `\n[${typeLabel} 기록] ${contentPreview}`;
+            } else {
+                workoutSummary = `\n[${typeLabel} 기록]`;
+            }
+        }
+
         // 3. 알림 내용 구성
         let title = 'Workout Mate';
         let pushBody = '새로운 알림이 있습니다.';
 
         if (record.type === 'reaction') {
             title = '새로운 반응 👏';
-            pushBody = `${actorName}님이 회원님의 운동 기록에 반응을 남겼습니다: ${record.content}`;
+            pushBody = `${actorName}님이 회원님의 운동 기록에 반응을 남겼습니다: ${record.content}${workoutSummary}`;
         } else if (record.type === 'comment') {
             title = '새로운 댓글 💬';
-            pushBody = `${actorName}님이 댓글을 남겼습니다: "${record.content}"`;
+            pushBody = `${actorName}님이 댓글을 남겼습니다: "${record.content}"${workoutSummary}`;
         }
 
         // 4. 푸시 발송
