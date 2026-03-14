@@ -366,7 +366,7 @@ export default function WorkoutDetailPage() {
                             {comments.map(comment => (
                                 <Paper key={comment.id} withBorder p="sm">
                                     <Group>
-                                        <Avatar size="sm" radius="xl">
+                                        <Avatar size="sm" radius="xl" src={comment.user?.avatar_url}>
                                             {comment.user?.nickname.charAt(0)}
                                         </Avatar>
                                         <div style={{ flex: 1 }}>
