@@ -5,13 +5,13 @@ import {
     Container, Title, Group, ActionIcon, Button, Text, Paper, Badge,
     Modal, TextInput, Select, Textarea, Avatar, Tooltip,
     Divider, Stack, Anchor, CloseButton, LoadingOverlay, Box, Table,
-    Popover,
+    Popover, SegmentedControl,
 } from '@mantine/core';
 import {
     IconCalendarEvent, IconChevronLeft, IconChevronRight, IconPlus,
     IconMapPin, IconClock, IconLink, IconHandStop, IconCalendarDue,
     IconUser, IconNote, IconCheck, IconEdit, IconTrash, IconTicket,
-    IconMessage, IconMoodSmile, IconSend, IconCalendar, IconFilter, IconInfoCircle, IconPencil,
+    IconMessage, IconMoodSmile, IconSend, IconCalendar, IconFilter, IconInfoCircle, IconPencil, IconList,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { createClient } from '@/lib/supabase/client';
@@ -42,6 +42,7 @@ import {
 } from '@/lib/competitions';
 import dayjs from 'dayjs';
 import styles from './CompetitionCalendar.module.css';
+import CompetitionDetailPanel from './CompetitionDetailPanel';
 
 // Calendar helpers
 function getDaysInMonth(year: number, month: number) {
@@ -128,6 +129,7 @@ export default function CompetitionsPage() {
     const [competitions, setCompetitions] = useState<Competition[]>([]);
     const [regPeriods, setRegPeriods] = useState<RegPeriodCalendarItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
     const [selectedCompetition, setSelectedCompetition] = useState<Competition | null>(null);
     const [detailLoading, setDetailLoading] = useState(false);
     const [activeFilters, setActiveFilters] = useState<CompetitionType[]>(ALL_COMPETITION_TYPES);
@@ -630,11 +632,30 @@ export default function CompetitionsPage() {
                 })}
             </div>
 
-            {/* Calendar Section */}
-            <Group gap="xs" mb="xs" mt="lg">
-                <IconCalendar size={20} color="var(--mantine-color-dimmed)" />
-                <Text fw={600} size="sm" c="dimmed">대회 캘린더</Text>
+            {/* View Mode & Title */}
+            <Group justify="space-between" align="center" mt="lg" mb="xs">
+                <Group gap="xs">
+                    {viewMode === 'calendar' ? (
+                        <IconCalendarEvent size={20} color="var(--mantine-color-dimmed)" />
+                    ) : (
+                        <IconList size={20} color="var(--mantine-color-dimmed)" />
+                    )}
+                    <Text fw={600} size="sm" c="dimmed">
+                        {viewMode === 'calendar' ? '대회 캘린더' : '대회 목록'}
+                    </Text>
+                </Group>
+                <SegmentedControl
+                    value={viewMode}
+                    onChange={(val) => setViewMode(val as 'calendar' | 'list')}
+                    data={[
+                        { label: '캘린더 보기', value: 'calendar' },
+                        { label: '목록 보기', value: 'list' },
+                    ]}
+                    size="xs"
+                />
             </Group>
+
+            {viewMode === 'calendar' && (
             <Paper shadow="sm" radius="md" p="md" pos="relative"
                 onTouchStart={(e) => setCalTouchStart(e.touches[0].clientX)}
                 onTouchEnd={(e) => {
@@ -776,335 +797,155 @@ export default function CompetitionsPage() {
                     })}
                 </div>
             </Paper>
+            )}
+
+            {viewMode === 'list' && (
+                <Stack gap="sm" mt="lg">
+                    {competitions.length === 0 ? (
+                        <Paper shadow="sm" radius="md" p="xl" ta="center">
+                            <Text c="dimmed">해당 조건의 대회가 없습니다.</Text>
+                        </Paper>
+                    ) : (
+                        competitions.map((comp) => {
+                            const isExpanded = selectedCompetition?.id === comp.id;
+                            const isCompParticipating = comp.participants?.some(
+                                p => p.user_id === currentUser?.id
+                            );
+                            return (
+                                <Paper key={comp.id} shadow="sm" radius="md" p="md" withBorder>
+                                    <Group 
+                                        justify="space-between" 
+                                        align="center" 
+                                        style={{ cursor: 'pointer' }} 
+                                        onClick={() => {
+                                            if (isExpanded) {
+                                                setSelectedCompetition(null);
+                                            } else {
+                                                // reuse the logic for populating
+                                                setSelectedCompetition(comp);
+                                                loadComments(comp.id);
+                                            }
+                                        }}
+                                        wrap="nowrap"
+                                    >
+                                        <Group gap="md" style={{ flex: 1 }} wrap="nowrap">
+                                            <div style={{ minWidth: 60, textAlign: 'center' }}>
+                                                <Text size="lg" fw={700}>
+                                                    {dayjs(comp.start_date).format('D')}
+                                                </Text>
+                                                <Text size="xs" c="dimmed">
+                                                    {WEEKDAYS[dayjs(comp.start_date).day()]}요일
+                                                </Text>
+                                            </div>
+                                            <Divider orientation="vertical" />
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <Group gap="xs" mb={4} wrap="nowrap">
+                                                    <Badge size="sm" color={COMPETITION_TYPE_COLORS[comp.competition_type]} style={{ flexShrink: 0 }}>
+                                                        {COMPETITION_TYPE_LABELS[comp.competition_type]}
+                                                    </Badge>
+                                                    <Text fw={600} truncate>{comp.abbreviation || comp.name}</Text>
+                                                </Group>
+                                                <Group gap="xs" wrap="nowrap">
+                                                    <IconMapPin size={12} color="var(--mantine-color-dimmed)" style={{ flexShrink: 0 }} />
+                                                    <Text size="xs" c="dimmed" truncate>{comp.location}</Text>
+                                                </Group>
+                                            </div>
+                                            {comp.participants && comp.participants.length > 0 && (
+                                                <Avatar.Group spacing="sm" style={{ flexShrink: 0 }}>
+                                                    {comp.participants.slice(0, 3).map(p => (
+                                                        <Tooltip key={p.id} label={p.user?.nickname}>
+                                                            <Avatar size={30} radius="xl" src={p.user?.avatar_url} color="blue">
+                                                                {p.user?.nickname?.charAt(0)}
+                                                            </Avatar>
+                                                        </Tooltip>
+                                                    ))}
+                                                    {comp.participants.length > 3 && (
+                                                        <Avatar size={30} radius="xl" color="gray">
+                                                            +{comp.participants.length - 3}
+                                                        </Avatar>
+                                                    )}
+                                                </Avatar.Group>
+                                            )}
+                                        </Group>
+                                        <ActionIcon variant="subtle" style={{ flexShrink: 0 }}>
+                                            {isExpanded ? <IconChevronRight size={18} style={{ transform: 'rotate(-90deg)', transition: 'transform 0.2s' }} /> : <IconChevronRight size={18} style={{ transform: 'rotate(90deg)', transition: 'transform 0.2s' }} />}
+                                        </ActionIcon>
+                                    </Group>
+
+                                    {/* Expanded Detail View */}
+                                    {isExpanded && (
+                                        <Box mt="md" pt="md" style={{ borderTop: '1px solid var(--mantine-color-gray-2)' }}>
+                                            <CompetitionDetailPanel
+                                                selectedCompetition={comp}
+                                                detailLoading={detailLoading}
+                                                currentUser={currentUser}
+                                                isAdmin={isAdmin}
+                                                canEditDelete={canEditDelete}
+                                                handleOpenEdit={handleOpenEdit}
+                                                handleDeleteCompetition={handleDeleteCompetition}
+                                                setSelectedCompetition={setSelectedCompetition}
+                                                isParticipating={!!isCompParticipating}
+                                                handleParticipate={handleParticipate}
+                                                comments={comments}
+                                                commentsLoading={commentsLoading}
+                                                newComment={newComment}
+                                                setNewComment={setNewComment}
+                                                commentInputRef={commentInputRef}
+                                                commentSubmitting={commentSubmitting}
+                                                handleCreateComment={handleCreateComment}
+                                                editingCommentId={editingCommentId}
+                                                setEditingCommentId={setEditingCommentId}
+                                                editingCommentText={editingCommentText}
+                                                setEditingCommentText={setEditingCommentText}
+                                                handleUpdateComment={handleUpdateComment}
+                                                handleDeleteComment={handleDeleteComment}
+                                                handleToggleReaction={handleToggleReaction}
+                                                viewMode="list"
+                                            />
+                                        </Box>
+                                    )}
+                                </Paper>
+                            );
+                        })
+                    )}
+                </Stack>
+            )}
 
             {/* Competition Detail Section */}
-            {selectedCompetition && (
-                <>
-                    <Group gap="xs" mb="xs" mt="lg">
+            {viewMode === 'calendar' && selectedCompetition && (
+                <Box mt="md">
+                    <Group gap="xs" mb="xs">
                         <IconInfoCircle size={20} color="var(--mantine-color-dimmed)" />
                         <Text fw={600} size="sm" c="dimmed">대회 상세정보</Text>
                     </Group>
-                </>
-            )}
-            {selectedCompetition && (
-                <Paper shadow="sm" radius="md" p="sm" mt="sm" className={styles.detailPanel} pos="relative">
-                    <LoadingOverlay visible={detailLoading} loaderProps={{ type: 'dots' }} />
-                    <Group justify="space-between" mb="xs">
-                        <Group gap="sm">
-                            <Badge
-                                size="lg"
-                                color={COMPETITION_TYPE_COLORS[selectedCompetition.competition_type]}
-                            >
-                                {COMPETITION_TYPE_LABELS[selectedCompetition.competition_type]}
-                            </Badge>
-                            <Title order={4}>{selectedCompetition.name}</Title>
-                            {selectedCompetition.abbreviation && (
-                                <Text c="dimmed" size="sm">({selectedCompetition.abbreviation})</Text>
-                            )}
-                        </Group>
-                        <Group gap={4}>
-                            {canEditDelete(selectedCompetition) && (
-                                <>
-                                    <Tooltip label="수정">
-                                        <ActionIcon
-                                            variant="subtle"
-                                            color="blue"
-                                            onClick={() => handleOpenEdit(selectedCompetition)}
-                                            size="md"
-                                        >
-                                            <IconEdit size={18} />
-                                        </ActionIcon>
-                                    </Tooltip>
-                                    <Tooltip label="삭제">
-                                        <ActionIcon
-                                            variant="subtle"
-                                            color="red"
-                                            onClick={() => handleDeleteCompetition(selectedCompetition)}
-                                            size="md"
-                                        >
-                                            <IconTrash size={18} />
-                                        </ActionIcon>
-                                    </Tooltip>
-                                </>
-                            )}
-                            <CloseButton onClick={() => setSelectedCompetition(null)} />
-                        </Group>
-                    </Group>
-
-                    <div className={styles.detailGrid}>
-                        <dl className={styles.detailField}>
-                            <dt><IconCalendarDue size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> 기간</dt>
-                            <dd>
-                                {selectedCompetition.start_date === selectedCompetition.end_date
-                                    ? dayjs(selectedCompetition.start_date).format('YYYY년 M월 D일')
-                                    : `${dayjs(selectedCompetition.start_date).format('YYYY.M.D')} ~ ${dayjs(selectedCompetition.end_date).format('YYYY.M.D')}`
-                                }
-                            </dd>
-                        </dl>
-                        {selectedCompetition.start_time && (
-                            <dl className={styles.detailField}>
-                                <dt><IconClock size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> 출발시간</dt>
-                                <dd>{selectedCompetition.start_time}</dd>
-                            </dl>
-                        )}
-                        <dl className={styles.detailField}>
-                            <dt><IconMapPin size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> 장소</dt>
-                            <dd>{selectedCompetition.location}</dd>
-                        </dl>
-                        {selectedCompetition.homepage_url && (
-                            <dl className={styles.detailField}>
-                                <dt><IconLink size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> 홈페이지</dt>
-                                <dd>
-                                    <Anchor href={selectedCompetition.homepage_url} target="_blank" size="sm">
-                                        {selectedCompetition.homepage_url}
-                                    </Anchor>
-                                </dd>
-                            </dl>
-                        )}
-                        {selectedCompetition.memo && (
-                            <dl className={styles.detailField}>
-                                <dt><IconNote size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> 메모</dt>
-                                <dd style={{ whiteSpace: 'pre-wrap' }}>{selectedCompetition.memo}</dd>
-                            </dl>
-                        )}
-                        <dl className={styles.detailField}>
-                            <dt><IconUser size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> 등록자</dt>
-                            <dd>
-                                <Group gap={4}>
-                                    <Avatar size={20} radius="xl" src={selectedCompetition.registrant?.avatar_url} color="blue">
-                                        {selectedCompetition.registrant?.nickname?.charAt(0)}
-                                    </Avatar>
-                                    <Text size="sm">{selectedCompetition.registrant?.nickname}</Text>
-                                </Group>
-                            </dd>
-                        </dl>
-                    </div>
-
-                    {/* Registration periods in detail */}
-                    {selectedCompetition.registration_periods && selectedCompetition.registration_periods.length > 0 && (
-                        <>
-                            <Divider my="xs" />
-                            <Text fw={600} size="sm" mb="xs">
-                                <IconTicket size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> 신청일시
-                            </Text>
-                            <Table withTableBorder withColumnBorders>
-                                <Table.Thead>
-                                    <Table.Tr>
-                                        <Table.Th>종목</Table.Th>
-                                        <Table.Th>신청일자</Table.Th>
-                                        <Table.Th>시작시간</Table.Th>
-                                    </Table.Tr>
-                                </Table.Thead>
-                                <Table.Tbody>
-                                    {selectedCompetition.registration_periods.map(rp => (
-                                        <Table.Tr key={rp.id}>
-                                            <Table.Td>{rp.category_name}</Table.Td>
-                                            <Table.Td>{dayjs(rp.registration_date).format('YYYY.M.D')}</Table.Td>
-                                            <Table.Td>{rp.registration_time || '-'}</Table.Td>
-                                        </Table.Tr>
-                                    ))}
-                                </Table.Tbody>
-                            </Table>
-                        </>
-                    )}
-
-                    <Divider my="xs" />
-
-                    {/* Participation */}
-                    <Group justify="space-between" align="flex-start">
-                        <div>
-                            <Text fw={600} size="sm" mb={4}>
-                                참가자 ({selectedCompetition.participants?.length || 0}명)
-                            </Text>
-                            <div className={styles.participantsList}>
-                                {selectedCompetition.participants?.map(p => (
-                                    <Tooltip key={p.id} label={p.user?.nickname}>
-                                        <div className={styles.participantItem}>
-                                            <Avatar size={36} radius="xl" src={p.user?.avatar_url} color="blue">
-                                                {p.user?.nickname?.charAt(0)}
-                                            </Avatar>
-                                            <Text size="xs">{p.user?.nickname}</Text>
-                                        </div>
-                                    </Tooltip>
-                                ))}
-                                {(!selectedCompetition.participants || selectedCompetition.participants.length === 0) && (
-                                    <Text size="sm" c="dimmed">아직 참가자가 없습니다.</Text>
-                                )}
-                            </div>
-                        </div>
-                        <Button
-                            variant={isParticipating ? 'light' : 'gradient'}
-                            gradient={!isParticipating ? { from: 'orange', to: 'yellow' } : undefined}
-                            color={isParticipating ? 'gray' : undefined}
-                            leftSection={isParticipating ? <IconCheck size={18} /> : <IconHandStop size={18} />}
-                            onClick={handleParticipate}
-                            size="md"
-                        >
-                            {isParticipating ? '참가 취소' : '나 참가! ✋'}
-                        </Button>
-                    </Group>
-
-                    {/* Comments Section */}
-                    <Divider my="xs" />
-                    <Text fw={600} size="sm" mb={4}>
-                        <IconMessage size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> 댓글 ({comments.length})
-                    </Text>
-
-                    {/* Comment list */}
-                    <Stack gap="sm" mb="md">
-                        {commentsLoading ? (
-                            <Text size="sm" c="dimmed" ta="center">댓글을 불러오는 중...</Text>
-                        ) : comments.length === 0 ? (
-                            <Text size="sm" c="dimmed" ta="center" py="md">아직 댓글이 없습니다. 첫 번째 댓글을 남겨보세요!</Text>
-                        ) : (
-                            comments.map(comment => {
-                                const isOwn = comment.user_id === currentUser?.id;
-                                const isEditing = editingCommentId === comment.id;
-
-                                // Group reactions by emoji
-                                const reactionGroups: { emoji: string; count: number; userReacted: boolean }[] = [];
-                                if (comment.reactions) {
-                                    const emojiMap = new Map<string, { count: number; userReacted: boolean }>();
-                                    for (const r of comment.reactions) {
-                                        const existing = emojiMap.get(r.emoji);
-                                        if (existing) {
-                                            existing.count++;
-                                            if (r.user_id === currentUser?.id) existing.userReacted = true;
-                                        } else {
-                                            emojiMap.set(r.emoji, { count: 1, userReacted: r.user_id === currentUser?.id });
-                                        }
-                                    }
-                                    emojiMap.forEach((val, emoji) => reactionGroups.push({ emoji, ...val }));
-                                }
-
-                                return (
-                                    <Paper key={comment.id} p="sm" radius="md" withBorder style={{ borderColor: 'var(--mantine-color-gray-2)' }}>
-                                        <Group justify="space-between" mb={4}>
-                                            <Group gap={8}>
-                                                <Avatar size={28} radius="xl" src={comment.user?.avatar_url} color="blue">
-                                                    {comment.user?.nickname?.charAt(0)}
-                                                </Avatar>
-                                                <div>
-                                                    <Text size="sm" fw={600} lh={1.2}>{comment.user?.nickname}</Text>
-                                                    <Text size="xs" c="dimmed">
-                                                        {dayjs(comment.created_at).format('M/D HH:mm')}
-                                                        {comment.updated_at !== comment.created_at && ' (수정됨)'}
-                                                    </Text>
-                                                </div>
-                                            </Group>
-                                            {isOwn && (
-                                                <Group gap={2}>
-                                                    <ActionIcon
-                                                        variant="subtle" size="xs" color="gray"
-                                                        onClick={() => {
-                                                            setEditingCommentId(comment.id);
-                                                            setEditingCommentText(comment.content);
-                                                        }}
-                                                    >
-                                                        <IconEdit size={14} />
-                                                    </ActionIcon>
-                                                    <ActionIcon variant="subtle" size="xs" color="red" onClick={() => handleDeleteComment(comment.id)}>
-                                                        <IconTrash size={14} />
-                                                    </ActionIcon>
-                                                </Group>
-                                            )}
-                                        </Group>
-
-                                        {isEditing ? (
-                                            <Group gap="xs" mt={4}>
-                                                <Textarea
-                                                    value={editingCommentText}
-                                                    onChange={e => setEditingCommentText(e.target.value)}
-                                                    autosize
-                                                    minRows={1}
-                                                    maxRows={4}
-                                                    style={{ flex: 1 }}
-                                                    size="xs"
-                                                />
-                                                <Button size="xs" variant="filled" onClick={() => handleUpdateComment(comment.id)}>저장</Button>
-                                                <Button size="xs" variant="subtle" color="gray" onClick={() => { setEditingCommentId(null); setEditingCommentText(''); }}>취소</Button>
-                                            </Group>
-                                        ) : (
-                                            <Text size="sm" mt={4} style={{ whiteSpace: 'pre-wrap' }}>{comment.content}</Text>
-                                        )}
-
-                                        {/* Reactions */}
-                                        <Group gap={4} mt={6}>
-                                            {reactionGroups.map(rg => (
-                                                <Badge
-                                                    key={rg.emoji}
-                                                    variant={rg.userReacted ? 'filled' : 'light'}
-                                                    color={rg.userReacted ? 'blue' : 'gray'}
-                                                    size="sm"
-                                                    style={{ cursor: 'pointer', padding: '2px 6px' }}
-                                                    onClick={() => handleToggleReaction(comment.id, rg.emoji)}
-                                                >
-                                                    {rg.emoji} {rg.count}
-                                                </Badge>
-                                            ))}
-                                            <Popover position="top" withArrow shadow="sm" width={200}>
-                                                <Popover.Target>
-                                                    <ActionIcon variant="subtle" size="xs" color="gray">
-                                                        <IconMoodSmile size={16} />
-                                                    </ActionIcon>
-                                                </Popover.Target>
-                                                <Popover.Dropdown p={8}>
-                                                    <Group gap={4} justify="center">
-                                                        {AVAILABLE_REACTIONS.map(emoji => (
-                                                            <ActionIcon
-                                                                key={emoji}
-                                                                variant="subtle"
-                                                                size="lg"
-                                                                onClick={() => handleToggleReaction(comment.id, emoji)}
-                                                                style={{ fontSize: '1.2rem' }}
-                                                            >
-                                                                {emoji}
-                                                            </ActionIcon>
-                                                        ))}
-                                                    </Group>
-                                                </Popover.Dropdown>
-                                            </Popover>
-                                        </Group>
-                                    </Paper>
-                                );
-                            })
-                        )}
-                    </Stack>
-
-                    {/* New comment input */}
-                    <Group gap="xs" align="flex-end">
-                        <Avatar size={32} radius="xl" src={currentUser?.avatar_url} color="blue">
-                            {currentUser?.nickname?.charAt(0)}
-                        </Avatar>
-                        <Textarea
-                            ref={commentInputRef}
-                            placeholder="댓글을 입력하세요..."
-                            value={newComment}
-                            onChange={e => setNewComment(e.target.value)}
-                            onKeyDown={e => {
-                                if (e.key === 'Enter' && !e.shiftKey) {
-                                    e.preventDefault();
-                                    handleCreateComment();
-                                }
-                            }}
-                            autosize
-                            minRows={1}
-                            maxRows={4}
-                            style={{ flex: 1 }}
-                            size="sm"
-                        />
-                        <ActionIcon
-                            variant="gradient"
-                            gradient={{ from: 'blue', to: 'cyan' }}
-                            size="lg"
-                            onClick={handleCreateComment}
-                            loading={commentSubmitting}
-                            disabled={!newComment.trim()}
-                        >
-                            <IconSend size={18} />
-                        </ActionIcon>
-                    </Group>
-                </Paper>
+                    <CompetitionDetailPanel
+                        selectedCompetition={selectedCompetition}
+                        detailLoading={detailLoading}
+                        currentUser={currentUser}
+                        isAdmin={isAdmin}
+                        canEditDelete={canEditDelete}
+                        handleOpenEdit={handleOpenEdit}
+                        handleDeleteCompetition={handleDeleteCompetition}
+                        setSelectedCompetition={setSelectedCompetition}
+                        isParticipating={!!isParticipating}
+                        handleParticipate={handleParticipate}
+                        comments={comments}
+                        commentsLoading={commentsLoading}
+                        newComment={newComment}
+                        setNewComment={setNewComment}
+                        commentInputRef={commentInputRef}
+                        commentSubmitting={commentSubmitting}
+                        handleCreateComment={handleCreateComment}
+                        editingCommentId={editingCommentId}
+                        setEditingCommentId={setEditingCommentId}
+                        editingCommentText={editingCommentText}
+                        setEditingCommentText={setEditingCommentText}
+                        handleUpdateComment={handleUpdateComment}
+                        handleDeleteComment={handleDeleteComment}
+                        handleToggleReaction={handleToggleReaction}
+                        viewMode="calendar"
+                    />
+                </Box>
             )}
 
 
