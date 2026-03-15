@@ -106,6 +106,37 @@ export async function fetchCompetitions(
     return data || [];
 }
 
+// Fetch competitions for a given year with optional type filter
+export async function fetchCompetitionsForYear(
+    year: number,
+    types?: CompetitionType[]
+): Promise<Competition[]> {
+    const supabase = createClient();
+
+    const startStr = `${year}-01-01`;
+    const endStr = `${year}-12-31`;
+
+    let query = supabase
+        .from('competitions')
+        .select(COMPETITION_SELECT)
+        .lte('start_date', endStr)
+        .gte('end_date', startStr)
+        .order('start_date', { ascending: true });
+
+    if (types && types.length > 0 && types.length < ALL_COMPETITION_TYPES.length) {
+        query = query.in('competition_type', types);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+        console.error('Error fetching competitions for year:', error);
+        return [];
+    }
+
+    return data || [];
+}
+
 // Get a single competition by ID
 export async function fetchCompetition(id: string): Promise<Competition | null> {
     const supabase = createClient();

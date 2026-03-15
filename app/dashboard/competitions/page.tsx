@@ -5,7 +5,7 @@ import {
     Container, Title, Group, ActionIcon, Button, Text, Paper, Badge,
     Modal, TextInput, Select, Textarea, Avatar, Tooltip,
     Divider, Stack, Anchor, CloseButton, LoadingOverlay, Box, Table,
-    Popover, SegmentedControl,
+    Popover, Tabs,
 } from '@mantine/core';
 import {
     IconCalendarEvent, IconChevronLeft, IconChevronRight, IconPlus,
@@ -23,6 +23,7 @@ import {
     loadSavedFilters,
     saveFilters,
     fetchCompetitions,
+    fetchCompetitionsForYear,
     fetchCompetition,
     createCompetition,
     forceCreateCompetition,
@@ -129,7 +130,8 @@ export default function CompetitionsPage() {
     const [competitions, setCompetitions] = useState<Competition[]>([]);
     const [regPeriods, setRegPeriods] = useState<RegPeriodCalendarItem[]>([]);
     const [loading, setLoading] = useState(true);
-    const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
+    const [viewMode, setViewMode] = useState<string | null>('calendar');
+    const [listYear, setListYear] = useState(new Date().getFullYear());
     const [selectedCompetition, setSelectedCompetition] = useState<Competition | null>(null);
     const [detailLoading, setDetailLoading] = useState(false);
     const [activeFilters, setActiveFilters] = useState<CompetitionType[]>(ALL_COMPETITION_TYPES);
@@ -194,6 +196,13 @@ export default function CompetitionsPage() {
     // Load competitions + registration periods
     const loadCompetitions = useCallback(async () => {
         setLoading(true);
+        if (viewMode === 'list') {
+            const data = await fetchCompetitionsForYear(listYear, activeFilters);
+            setCompetitions(data);
+            setRegPeriods([]);
+            setLoading(false);
+            return;
+        }
         const data = await fetchCompetitions(currentYear, currentMonth, activeFilters);
         setCompetitions(data);
 
@@ -218,7 +227,7 @@ export default function CompetitionsPage() {
         setRegPeriods(mapped);
 
         setLoading(false);
-    }, [currentYear, currentMonth, activeFilters]);
+    }, [currentYear, currentMonth, listYear, activeFilters, viewMode]);
 
     useEffect(() => {
         loadCompetitions();
@@ -632,28 +641,39 @@ export default function CompetitionsPage() {
                 })}
             </div>
 
-            {/* View Mode & Title */}
-            <Group justify="space-between" align="center" mt="lg" mb="xs">
-                <Group gap="xs">
-                    {viewMode === 'calendar' ? (
-                        <IconCalendarEvent size={20} color="var(--mantine-color-dimmed)" />
-                    ) : (
-                        <IconList size={20} color="var(--mantine-color-dimmed)" />
-                    )}
+            {/* View Mode Tabs */}
+            <Tabs value={viewMode} onChange={(val) => setViewMode(val)} mt="xl" mb="md" variant="default">
+                <Tabs.List>
+                    <Tabs.Tab value="calendar" leftSection={<IconCalendarEvent size={16} />}>
+                        캘린더 보기
+                    </Tabs.Tab>
+                    <Tabs.Tab value="list" leftSection={<IconList size={16} />}>
+                        목록 보기
+                    </Tabs.Tab>
+                </Tabs.List>
+            </Tabs>
+
+            {viewMode === 'list' && (
+                <Group justify="space-between" align="center" mb="md">
                     <Text fw={600} size="sm" c="dimmed">
-                        {viewMode === 'calendar' ? '대회 캘린더' : '대회 목록'}
+                        {listYear}년 대회 목록
                     </Text>
+                    <Group gap="xs">
+                        <Button variant="light" size="xs" onClick={() => setListYear(new Date().getFullYear())}>
+                            올해
+                        </Button>
+                        <Group gap="xs">
+                            <ActionIcon variant="default" onClick={() => setListYear(y => y - 1)}>
+                                <IconChevronLeft size={16} />
+                            </ActionIcon>
+                            <Text fw={600}>{listYear}년</Text>
+                            <ActionIcon variant="default" onClick={() => setListYear(y => y + 1)}>
+                                <IconChevronRight size={16} />
+                            </ActionIcon>
+                        </Group>
+                    </Group>
                 </Group>
-                <SegmentedControl
-                    value={viewMode}
-                    onChange={(val) => setViewMode(val as 'calendar' | 'list')}
-                    data={[
-                        { label: '캘린더 보기', value: 'calendar' },
-                        { label: '목록 보기', value: 'list' },
-                    ]}
-                    size="xs"
-                />
-            </Group>
+            )}
 
             {viewMode === 'calendar' && (
             <Paper shadow="sm" radius="md" p="md" pos="relative"
