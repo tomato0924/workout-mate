@@ -5,7 +5,7 @@ import {
     Container, Title, Group, ActionIcon, Button, Text, Paper, Badge,
     Modal, TextInput, Select, Textarea, Avatar, Tooltip,
     Divider, Stack, Anchor, CloseButton, LoadingOverlay, Box, Table,
-    Popover, Tabs,
+    Popover, SegmentedControl, Tabs, Checkbox,
 } from '@mantine/core';
 import {
     IconCalendarEvent, IconChevronLeft, IconChevronRight, IconPlus,
@@ -132,6 +132,7 @@ export default function CompetitionsPage() {
     const [loading, setLoading] = useState(true);
     const [viewMode, setViewMode] = useState<string | null>('calendar');
     const [listYear, setListYear] = useState(new Date().getFullYear());
+    const [showMyOnly, setShowMyOnly] = useState(false);
     const [selectedCompetition, setSelectedCompetition] = useState<Competition | null>(null);
     const [detailLoading, setDetailLoading] = useState(false);
     const [activeFilters, setActiveFilters] = useState<CompetitionType[]>(ALL_COMPETITION_TYPES);
@@ -265,6 +266,14 @@ export default function CompetitionsPage() {
             return next;
         });
     };
+
+    // Filtered competitions for list view
+    const filteredCompetitions = useMemo(() =>
+        showMyOnly
+            ? competitions.filter(c => c.participants?.some(p => p.user_id === currentUser?.id))
+            : competitions,
+        [competitions, showMyOnly, currentUser?.id]
+    );
 
     // Event click
     const handleEventClick = async (competition: Competition) => {
@@ -655,22 +664,20 @@ export default function CompetitionsPage() {
 
             {viewMode === 'list' && (
                 <Group justify="space-between" align="center" mb="md">
-                    <Text fw={600} size="sm" c="dimmed">
-                        {listYear}년 대회 목록
-                    </Text>
+                    <Checkbox
+                        label="나의 대회"
+                        checked={showMyOnly}
+                        onChange={(e) => setShowMyOnly(e.currentTarget.checked)}
+                        size="sm"
+                    />
                     <Group gap="xs">
-                        <Button variant="light" size="xs" onClick={() => setListYear(new Date().getFullYear())}>
-                            올해
-                        </Button>
-                        <Group gap="xs">
-                            <ActionIcon variant="default" onClick={() => setListYear(y => y - 1)}>
-                                <IconChevronLeft size={16} />
-                            </ActionIcon>
-                            <Text fw={600}>{listYear}년</Text>
-                            <ActionIcon variant="default" onClick={() => setListYear(y => y + 1)}>
-                                <IconChevronRight size={16} />
-                            </ActionIcon>
-                        </Group>
+                        <ActionIcon variant="default" onClick={() => setListYear(y => y - 1)}>
+                            <IconChevronLeft size={16} />
+                        </ActionIcon>
+                        <Text fw={600}>{listYear}년</Text>
+                        <ActionIcon variant="default" onClick={() => setListYear(y => y + 1)}>
+                            <IconChevronRight size={16} />
+                        </ActionIcon>
                     </Group>
                 </Group>
             )}
@@ -821,12 +828,11 @@ export default function CompetitionsPage() {
 
             {viewMode === 'list' && (
                 <Stack gap="sm" mt="lg">
-                    {competitions.length === 0 ? (
+                    {filteredCompetitions.length === 0 ? (
                         <Paper shadow="sm" radius="md" p="xl" ta="center">
-                            <Text c="dimmed">해당 조건의 대회가 없습니다.</Text>
+                            <Text c="dimmed">{showMyOnly ? '참가 중인 대회가 없습니다.' : '해당 조건의 대회가 없습니다.'}</Text>
                         </Paper>
-                    ) : (
-                        competitions.map((comp) => {
+                    ) : filteredCompetitions.map((comp) => {
                             const isExpanded = selectedCompetition?.id === comp.id;
                             const isCompParticipating = comp.participants?.some(
                                 p => p.user_id === currentUser?.id
@@ -849,9 +855,9 @@ export default function CompetitionsPage() {
                                         wrap="nowrap"
                                     >
                                         <Group gap="md" style={{ flex: 1 }} wrap="nowrap">
-                                            <div style={{ minWidth: 60, textAlign: 'center' }}>
-                                                <Text size="lg" fw={700}>
-                                                    {dayjs(comp.start_date).format('D')}
+                                            <div style={{ minWidth: 52, textAlign: 'center' }}>
+                                                <Text size="md" fw={700}>
+                                                    {dayjs(comp.start_date).format('M/D')}
                                                 </Text>
                                                 <Text size="xs" c="dimmed">
                                                     {WEEKDAYS[dayjs(comp.start_date).day()]}요일
@@ -916,7 +922,7 @@ export default function CompetitionsPage() {
                                                 editingCommentId={editingCommentId}
                                                 setEditingCommentId={setEditingCommentId}
                                                 editingCommentText={editingCommentText}
-                                                setEditingCommentText={setEditingCommentText}
+                                                 setEditingCommentText={setEditingCommentText}
                                                 handleUpdateComment={handleUpdateComment}
                                                 handleDeleteComment={handleDeleteComment}
                                                 handleToggleReaction={handleToggleReaction}
@@ -926,8 +932,7 @@ export default function CompetitionsPage() {
                                     )}
                                 </Paper>
                             );
-                        })
-                    )}
+                        })}
                 </Stack>
             )}
 
