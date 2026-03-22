@@ -839,64 +839,62 @@ export default function CompetitionsPage() {
                             );
                             return (
                                 <Paper key={comp.id} shadow="sm" radius="md" p="md" withBorder>
-                                    <Group 
-                                        justify="space-between" 
-                                        align="center" 
-                                        style={{ cursor: 'pointer' }} 
-                                        onClick={() => {
-                                            if (isExpanded) {
-                                                setSelectedCompetition(null);
-                                            } else {
-                                                // reuse the logic for populating
-                                                setSelectedCompetition(comp);
-                                                loadComments(comp.id);
-                                            }
-                                        }}
-                                        wrap="nowrap"
-                                    >
-                                        <Group gap="md" style={{ flex: 1 }} wrap="nowrap">
-                                            <div style={{ minWidth: 52, textAlign: 'center' }}>
-                                                <Text size="md" fw={700}>
-                                                    {dayjs(comp.start_date).format('M/D')}
-                                                </Text>
-                                                <Text size="xs" c="dimmed">
-                                                    {WEEKDAYS[dayjs(comp.start_date).day()]}요일
-                                                </Text>
-                                            </div>
-                                            <Divider orientation="vertical" />
-                                            <div style={{ flex: 1, minWidth: 0 }}>
-                                                <Group gap="xs" mb={4} wrap="nowrap">
-                                                    <Badge size="sm" color={COMPETITION_TYPE_COLORS[comp.competition_type]} style={{ flexShrink: 0 }}>
-                                                        {COMPETITION_TYPE_LABELS[comp.competition_type]}
-                                                    </Badge>
-                                                    <Text fw={600} truncate>{comp.abbreviation || comp.name}</Text>
-                                                </Group>
-                                                <Group gap="xs" wrap="nowrap">
-                                                    <IconMapPin size={12} color="var(--mantine-color-dimmed)" style={{ flexShrink: 0 }} />
-                                                    <Text size="xs" c="dimmed" truncate>{comp.location}</Text>
-                                                </Group>
-                                            </div>
-                                            {comp.participants && comp.participants.length > 0 && (
-                                                <Avatar.Group spacing="sm" style={{ flexShrink: 0 }}>
-                                                    {comp.participants.slice(0, 3).map(p => (
-                                                        <Tooltip key={p.id} label={p.user?.nickname}>
-                                                            <Avatar size={30} radius="xl" src={p.user?.avatar_url} color="blue">
-                                                                {p.user?.nickname?.charAt(0)}
-                                                            </Avatar>
-                                                        </Tooltip>
-                                                    ))}
-                                                    {comp.participants.length > 3 && (
-                                                        <Avatar size={30} radius="xl" color="gray">
-                                                            +{comp.participants.length - 3}
-                                                        </Avatar>
-                                                    )}
-                                                </Avatar.Group>
-                                            )}
-                                        </Group>
-                                        <ActionIcon variant="subtle" style={{ flexShrink: 0 }}>
-                                            {isExpanded ? <IconChevronRight size={18} style={{ transform: 'rotate(-90deg)', transition: 'transform 0.2s' }} /> : <IconChevronRight size={18} style={{ transform: 'rotate(90deg)', transition: 'transform 0.2s' }} />}
-                                        </ActionIcon>
-                                    </Group>
+                                                <div
+                                                    style={{ cursor: 'pointer', display: 'flex', alignItems: 'stretch', gap: 12 }}
+                                                    onClick={() => {
+                                                        if (isExpanded) {
+                                                            setSelectedCompetition(null);
+                                                        } else {
+                                                            setSelectedCompetition(comp);
+                                                            loadComments(comp.id);
+                                                        }
+                                                    }}
+                                                >
+                                                    {/* 날짜 */}
+                                                    <div style={{ minWidth: 44, textAlign: 'center', flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                                        <Text size="md" fw={700} lh={1.2}>{dayjs(comp.start_date).format('M/D')}</Text>
+                                                        <Text size="xs" c="dimmed">{WEEKDAYS[dayjs(comp.start_date).day()]}요일</Text>
+                                                    </div>
+                                                    <Divider orientation="vertical" />
+                                                    {/* 내용 */}
+                                                    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                                        {/* 종목 배지 + 대회명 */}
+                                                        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                                                            <Badge size="sm" color={COMPETITION_TYPE_COLORS[comp.competition_type]} style={{ flexShrink: 0 }}>
+                                                                {COMPETITION_TYPE_LABELS[comp.competition_type]}
+                                                            </Badge>
+                                                            <Text fw={600} size="sm" style={{ wordBreak: 'break-word' }}>{comp.abbreviation || comp.name}</Text>
+                                                        </div>
+                                                        {/* 장소 */}
+                                                        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                                                            <IconMapPin size={12} color="var(--mantine-color-dimmed)" style={{ flexShrink: 0 }} />
+                                                            <Text size="xs" c="dimmed" style={{ wordBreak: 'break-word' }}>{comp.location}</Text>
+                                                        </div>
+                                                        {/* 참가자 아바타 */}
+                                                        {comp.participants && comp.participants.length > 0 && (
+                                                            <Avatar.Group spacing="xs" mt={2}>
+                                                                {comp.participants.slice(0, 5).map(p => (
+                                                                    <Tooltip key={p.id} label={p.user?.nickname}>
+                                                                        <Avatar size={24} radius="xl" src={p.user?.avatar_url} color="blue">
+                                                                            {p.user?.nickname?.charAt(0)}
+                                                                        </Avatar>
+                                                                    </Tooltip>
+                                                                ))}
+                                                                {comp.participants.length > 5 && (
+                                                                    <Avatar size={24} radius="xl" color="gray">
+                                                                        +{comp.participants.length - 5}
+                                                                    </Avatar>
+                                                                )}
+                                                            </Avatar.Group>
+                                                        )}
+                                                    </div>
+                                                    {/* 펼침 화살표 */}
+                                                    <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+                                                        <ActionIcon variant="subtle" onClick={(e) => { e.stopPropagation(); if (isExpanded) setSelectedCompetition(null); else { setSelectedCompetition(comp); loadComments(comp.id); } }}>
+                                                            <IconChevronRight size={18} style={{ transform: isExpanded ? 'rotate(-90deg)' : 'rotate(90deg)', transition: 'transform 0.2s' }} />
+                                                        </ActionIcon>
+                                                    </div>
+                                                </div>
 
                                     {/* Expanded Detail View */}
                                     {isExpanded && (
