@@ -62,6 +62,7 @@ function ProfileContent() {
 
     // Export State
     const [exportModalOpen, setExportModalOpen] = useState(false);
+    const [useDateRange, setUseDateRange] = useState(false);
     const [exportDateRange, setExportDateRange] = useState<[Date | null, Date | null]>([null, null]);
 
     // Goal State
@@ -247,28 +248,32 @@ function ProfileContent() {
     const handleExportCSV = async () => {
         if (!profile) return;
         const [start, end] = exportDateRange;
-        if (!start || !end) {
+        
+        if (useDateRange && (!start || !end)) {
             notifications.show({ message: '시작일과 종료일을 모두 선택해주세요', color: 'orange' });
             return;
         }
 
         setLoading(true);
         try {
-            const startDate = dayjs(start).format('YYYY-MM-DD');
-            const endDate = dayjs(end).format('YYYY-MM-DD');
-
-            const { data, error } = await supabase
+            let query = supabase
                 .from('workouts')
                 .select('*')
                 .eq('user_id', profile.id)
-                .gte('workout_date', startDate)
-                .lte('workout_date', endDate)
                 .order('workout_date', { ascending: false });
+
+            if (useDateRange && start && end) {
+                const startDate = dayjs(start).format('YYYY-MM-DD');
+                const endDate = dayjs(end).format('YYYY-MM-DD');
+                query = query.gte('workout_date', startDate).lte('workout_date', endDate);
+            }
+
+            const { data, error } = await query;
 
             if (error) throw error;
 
             if (!data || data.length === 0) {
-                notifications.show({ message: '해당 기간에 기록된 운동 데이터가 없습니다', color: 'blue' });
+                notifications.show({ message: '기록된 운동 데이터가 없습니다', color: 'blue' });
                 return;
             }
 
@@ -296,7 +301,11 @@ function ProfileContent() {
             
             const link = document.createElement('a');
             link.href = url;
-            link.setAttribute('download', `workout_data_${startDate}_to_${endDate}.csv`);
+            const filename = useDateRange && start && end 
+                ? `workout_data_${dayjs(start).format('YYYYMMDD')}_to_${dayjs(end).format('YYYYMMDD')}.csv`
+                : `workout_data_all_time_${dayjs().format('YYYYMMDD')}.csv`;
+            
+            link.setAttribute('download', filename);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -304,6 +313,7 @@ function ProfileContent() {
             notifications.show({ message: 'CSV 파일 다운로드가 시작되었습니다', color: 'green' });
             setExportModalOpen(false);
             setExportDateRange([null, null]);
+            setUseDateRange(false);
 
         } catch (error) {
             console.error('Export error:', error);
@@ -900,16 +910,30 @@ function ProfileContent() {
             {/* Export CSV Modal */}
             <Modal opened={exportModalOpen} onClose={() => setExportModalOpen(false)} title="운동 기록 내보내기 (CSV)">
                 <Stack>
-                    <Text size="sm" c="dimmed">다운로드할 운동 기록의 기간을 선택해주세요.</Text>
-                    <DatePickerInput
-                        type="range"
-                        label="기간 선택"
-                        placeholder="시작일 - 종료일"
-                        value={exportDateRange}
-                        onChange={setExportDateRange}
-                        valueFormat="YYYY-MM-DD"
-                        clearable
-                    />
+                    <Group justify="space-between">
+                        <Text size="sm" fw={500}>전체 기간 검색</Text>
+                        <Switch
+                            checked={!useDateRange}
+                            onChange={(e) => setUseDateRange(!e.currentTarget.checked)}
+                        />
+                    </Group>
+
+                    {useDateRange && (
+                        <DatePickerInput
+                            type="range"
+                            label="기간 선택"
+                            placeholder="시작일 - 종료일"
+                            value={exportDateRange}
+                            onChange={setExportDateRange}
+                            valueFormat="YYYY-MM-DD"
+                            clearable
+                        />
+                    )}
+
+                    {!useDateRange && (
+                        <Text size="xs" c="dimmed">회원님의 모든 운동 기록이 추출됩니다.</Text>
+                    )}
+
                     <Button mt="md" onClick={handleExportCSV} leftSection={<IconDownload size={16} />}>
                         CSV 다운로드
                     </Button>
