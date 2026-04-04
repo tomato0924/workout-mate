@@ -18,6 +18,7 @@ import {
     TextInput,
     Textarea,
     Divider,
+    Avatar,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
@@ -118,7 +119,7 @@ export default function GroupsPage() {
 
                 const { data } = await supabase
                     .from('workouts')
-                    .select('id, workout_type, created_at, user:user_profiles(nickname)')
+                    .select('id, workout_type, created_at, user:user_profiles(nickname, avatar_url)')
                     .in('user_id', userIds)
                     .neq('sharing_type', 'private')
                     .order('created_at', { ascending: false })
@@ -308,11 +309,20 @@ export default function GroupsPage() {
                                             <Stack gap={4}>
                                                 <Text size="xs" fw={600} c="dimmed">최근 크루 활동</Text>
                                                 {groupActivities[group.id].map(activity => (
-                                                    <Group key={activity.id} justify="space-between" wrap="nowrap">
-                                                        <Text size="sm" truncate>
-                                                            {activity.workout_type === 'swimming' ? '🏊 ' : activity.workout_type === 'cycling' ? '🚴 ' : '🏃 '}
-                                                            <Text span fw={500}>{activity.user?.nickname}</Text>님이 {activity.workout_type === 'swimming' ? '수영' : activity.workout_type === 'cycling' ? '자전거' : '러닝'} 기록
-                                                        </Text>
+                                                    <Group key={activity.id} justify="space-between" wrap="nowrap" gap="xs">
+                                                        <Group gap={8} wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
+                                                            <Avatar 
+                                                                size="xs" 
+                                                                src={activity.user?.avatar_url} 
+                                                                radius="xl"
+                                                            >
+                                                                {activity.user?.nickname?.substring(0, 1)}
+                                                            </Avatar>
+                                                            <Text size="sm" truncate>
+                                                                {activity.workout_type === 'swimming' ? '🏊 ' : activity.workout_type === 'cycling' ? '🚴 ' : '🏃 '}
+                                                                <Text span fw={500}>{activity.user?.nickname}</Text>님이 {activity.workout_type === 'swimming' ? '수영' : activity.workout_type === 'cycling' ? '자전거' : '러닝'} 기록
+                                                            </Text>
+                                                        </Group>
                                                         <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
                                                             {dayjs(activity.created_at).fromNow()}
                                                         </Text>
