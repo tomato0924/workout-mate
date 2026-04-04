@@ -17,6 +17,7 @@ import {
     Modal,
     TextInput,
     Textarea,
+    Divider,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
@@ -25,10 +26,17 @@ import { IconPlus, IconUsers, IconCrown } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
 import type { Group as GroupType } from '@/types';
 import { generateInviteCode } from '@/lib/utils/helpers';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+import 'dayjs/locale/ko';
+
+dayjs.extend(relativeTime);
+dayjs.locale('ko');
 
 export default function GroupsPage() {
     const router = useRouter();
     const [groups, setGroups] = useState<GroupType[]>([]);
+    const [groupActivities, setGroupActivities] = useState<Record<string, any[]>>({});
     const [loading, setLoading] = useState(true);
     const [createOpened, { open: openCreate, close: closeCreate }] = useDisclosure(false);
     const [joinOpened, { open: openJoin, close: closeJoin }] = useDisclosure(false);
@@ -77,10 +85,57 @@ export default function GroupsPage() {
             // .filter(g => g.approval_status === 'approved'); // Allow viewing pending groups
 
             setGroups(groupsData);
+            await loadGroupActivities(groupsData);
         } catch (error) {
             console.error('Load groups error:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const loadGroupActivities = async (groupsData: GroupType[]) => {
+        if (groupsData.length === 0) return;
+
+        try {
+            const groupIds = groupsData.map(g => g.id);
+
+            const { data: members, error } = await supabase
+                .from('group_members')
+                .select('group_id, user_id')
+                .in('group_id', groupIds);
+
+            if (error || !members) return;
+
+            const groupMemberMap: Record<string, string[]> = {};
+            groupIds.forEach(id => groupMemberMap[id] = []);
+            members.forEach(m => {
+                groupMemberMap[m.group_id].push(m.user_id);
+            });
+
+            const activityPromises = groupsData.map(async (group) => {
+                const userIds = groupMemberMap[group.id];
+                if (!userIds || userIds.length === 0) return { groupId: group.id, activities: [] };
+
+                const { data } = await supabase
+                    .from('workouts')
+                    .select('id, workout_type, created_at, user:user_profiles(nickname)')
+                    .in('user_id', userIds)
+                    .neq('sharing_type', 'private')
+                    .order('created_at', { ascending: false })
+                    .limit(2);
+
+                return { groupId: group.id, activities: data || [] };
+            });
+
+            const results = await Promise.all(activityPromises);
+            const newActivities: Record<string, any[]> = {};
+            results.forEach(res => {
+                newActivities[res.groupId] = res.activities;
+            });
+
+            setGroupActivities(newActivities);
+        } catch (error) {
+            console.error('Load group activities error:', error);
         }
     };
 
@@ -225,9 +280,9 @@ export default function GroupsPage() {
                                     shadow="sm"
                                     padding="lg"
                                     onClick={() => router.push(`/dashboard/groups/${group.id}`)}
-                                    style={{ cursor: 'pointer', height: '100%' }}
+                                    style={{ cursor: 'pointer', height: '100%', display: 'flex', flexDirection: 'column' }}
                                 >
-                                    <Stack>
+                                    <Stack style={{ flex: 1 }}>
                                         <Group justify="space-between">
                                             <Text fw={600} size="lg">{group.name}</Text>
                                             <IconUsers size={20} />
@@ -246,6 +301,26 @@ export default function GroupsPage() {
                                             </Badge>
                                         </Group>
                                     </Stack>
+
+                                    {groupActivities[group.id] && groupActivities[group.id].length > 0 && (
+                                        <div style={{ marginTop: 'auto' }}>
+                                            <Divider my="sm" />
+                                            <Stack gap={4}>
+                                                <Text size="xs" fw={600} c="dimmed">최근 크루 활동</Text>
+                                                {groupActivities[group.id].map(activity => (
+                                                    <Group key={activity.id} justify="space-between" wrap="nowrap">
+                                                        <Text size="sm" truncate>
+                                                            {activity.workout_type === 'swimming' ? '🏊 ' : activity.workout_type === 'cycling' ? '🚴 ' : '🏃 '}
+                                                            <Text span fw={500}>{activity.user?.nickname}</Text>님이 {activity.workout_type === 'swimming' ? '수영' : activity.workout_type === 'cycling' ? '자전거' : '러닝'} 기록
+                                                        </Text>
+                                                        <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
+                                                            {dayjs(activity.created_at).fromNow()}
+                                                        </Text>
+                                                    </Group>
+                                                ))}
+                                            </Stack>
+                                        </div>
+                                    )}
                                 </Card>
                             </Grid.Col>
                         ))}
