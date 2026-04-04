@@ -48,6 +48,45 @@ export function MyWorkoutTab() {
     const [upcomingCompetitions, setUpcomingCompetitions] = useState<Competition[]>([]);
     const [upcomingRegPeriods, setUpcomingRegPeriods] = useState<(CompetitionRegistrationPeriod & { competition?: Competition })[]>([]);
 
+    // Enhanced AI Encouragement state
+    const [aiMessages, setAiMessages] = useState<{
+        activity_message?: string;
+        portfolio_message?: string;
+        best_workout_message?: string;
+        goal_achievement_message?: string;
+    } | null>(null);
+
+    useEffect(() => {
+        const fetchAiEncouragement = async () => {
+            try {
+                const CACHE_KEY = 'dashboard_ai_encouragement';
+                const CACHE_TTL = 12 * 60 * 60 * 1000; // 12 hours
+                
+                const cachedRaw = localStorage.getItem(CACHE_KEY);
+                if (cachedRaw) {
+                    const parsed = JSON.parse(cachedRaw);
+                    if (Date.now() - parsed.timestamp < CACHE_TTL) {
+                        setAiMessages(parsed.data);
+                        return;
+                    }
+                }
+                
+                const response = await fetch('/api/dashboard-encouragement');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (!data.error && data.activity_message) {
+                        setAiMessages(data);
+                        localStorage.setItem(CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
+                    }
+                }
+            } catch (error) {
+                console.error('AI messages fetch error', error);
+            }
+        };
+        
+        setTimeout(fetchAiEncouragement, 1000);
+    }, []);
+
     // Filters
     const [activityType, setActivityType] = useState<string>('running');
     const [metric, setMetric] = useState<'distance' | 'time'>('distance');
@@ -863,12 +902,12 @@ export function MyWorkoutTab() {
         }
 
         return {
-            activity: { totalCount, level: activityLevel, message: activityMessage, color: activityColor, emoji: activityEmoji },
-            portfolio: { sports: sortedSports, message: portfolioMessage, isBalanced },
-            best: { workout: bestWorkout as Workout | null, pace: bestPace, formatPace },
-            goal: { achievement: avgAchievement, message: goalMessage, hasGoals: currentActivityGoals.length > 0 }
+            activity: { totalCount, level: activityLevel, message: aiMessages?.activity_message || activityMessage, color: activityColor, emoji: activityEmoji },
+            portfolio: { sports: sortedSports, message: aiMessages?.portfolio_message || portfolioMessage, isBalanced },
+            best: { workout: bestWorkout as Workout | null, pace: bestPace, formatPace, message: aiMessages?.best_workout_message || null },
+            goal: { achievement: avgAchievement, message: aiMessages?.goal_achievement_message || goalMessage, hasGoals: currentActivityGoals.length > 0 }
         };
-    }, [workouts, goals, goalDashboardData]);
+    }, [workouts, goals, goalDashboardData, aiMessages]);
 
     const unitLabel = metric === 'time' ? '분' : (activityType === 'swimming' ? 'm' : 'km');
 
@@ -989,7 +1028,7 @@ export function MyWorkoutTab() {
                                         {workoutSummary.best.formatPace(workoutSummary.best.pace, workoutSummary.best.workout.workout_type)}
                                     </Text>
                                     <Text size="sm" style={{ opacity: 0.8 }}>
-                                        최고의 페이스를 기록했어요! 🎉
+                                        {workoutSummary.best.message || '최고의 페이스를 기록했어요! 🎉'}
                                     </Text>
                                 </>
                             ) : (

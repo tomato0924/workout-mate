@@ -1,0 +1,9 @@
+app/dashboard/competitions/page.tsx(637,22): error TS2304: Cannot find name 'viewMode'.
+app/dashboard/competitions/page.tsx(643,26): error TS2304: Cannot find name 'viewMode'.
+app/dashboard/competitions/page.tsx(646,18): error TS2304: Cannot find name 'SegmentedControl'.
+app/dashboard/competitions/page.tsx(647,28): error TS2304: Cannot find name 'viewMode'.
+app/dashboard/competitions/page.tsx(648,32): error TS7006: Parameter 'val' implicitly has an 'any' type.
+app/dashboard/competitions/page.tsx(648,40): error TS2304: Cannot find name 'setViewMode'.
+app/dashboard/competitions/page.tsx(657,14): error TS2304: Cannot find name 'viewMode'.
+app/dashboard/competitions/page.tsx(801,14): error TS2304: Cannot find name 'viewMode'.
+app/dashboard/competitions/page.tsx(914,14): error TS2304: Cannot find name 'viewMode'.

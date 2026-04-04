@@ -1,0 +1,82 @@
+
+> workout-mate@0.1.0 build
+> next build
+
+  ??Next.js 14.2.35
+  - Environments: .env.local
+
+   Creating an optimized production build ...
+ ??Compiled successfully
+   Linting and checking validity of types ...
+
+Failed to compile.
+
+./app/dashboard/groups/page.tsx
+58:8  Warning: React Hook useEffect has a missing dependency: 'loadGroups'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./app/dashboard/groups/[id]/page.tsx
+203:8  Warning: React Hook useEffect has a missing dependency: 'loadGroupAndMembers'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+210:8  Warning: React Hook useEffect has a missing dependency: 'loadWorkouts'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./app/dashboard/layout.tsx
+29:8  Warning: React Hook useEffect has a missing dependency: 'loadProfile'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./app/dashboard/profile/page.tsx
+110:8  Warning: React Hook useEffect has missing dependencies: 'loadGoals' and 'loadProfile'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+332:8  Warning: React Hook useEffect has a missing dependency: 'editForm'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+664:51  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+664:54  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+664:66  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+664:73  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+665:51  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+665:54  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+665:67  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+665:70  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+675:51  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+675:54  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+675:64  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+675:67  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+684:51  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+684:58  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+685:51  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+685:54  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+685:67  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+685:70  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+
+./app/dashboard/workouts/new/page.tsx
+69:8  Warning: React Hook useEffect has a missing dependency: 'form'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+240:46  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+240:56  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+
+./app/dashboard/workouts/[id]/edit/page.tsx
+62:8  Warning: React Hook useEffect has a missing dependency: 'loadWorkout'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./app/dashboard/workouts/[id]/page.tsx
+61:8  Warning: React Hook useEffect has a missing dependency: 'loadWorkout'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./app/pending-approval/page.tsx
+18:8  Warning: React Hook useEffect has a missing dependency: 'checkApprovalStatus'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./components/admin/AdminGroups.tsx
+59:8  Warning: React Hook useEffect has missing dependencies: 'loadGroups' and 'loadUsers'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+
+./components/admin/AdminStats.tsx
+22:8  Warning: React Hook useEffect has a missing dependency: 'loadStats'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./components/admin/AdminUsers.tsx
+34:8  Warning: React Hook useEffect has a missing dependency: 'loadUsers'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./components/dashboard/FeedTab.tsx
+22:8  Warning: React Hook useEffect has a missing dependency: 'loadWorkouts'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./components/dashboard/MyWorkoutTab.tsx
+459:8  Warning: React Hook useEffect has a missing dependency: 'supabase'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./components/notifications/FCMManager.tsx
+94:41  Error: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`.  react/no-unescaped-entities
+94:48  Error: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`.  react/no-unescaped-entities
+
+./components/notifications/NotificationBell.tsx
+35:8  Warning: React Hook useEffect has a missing dependency: 'fetchNotifications'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/basic-features/eslint#disabling-rules
