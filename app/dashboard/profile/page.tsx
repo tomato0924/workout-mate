@@ -12,6 +12,7 @@ import type { UserProfile, PersonalGoal } from '@/types';
 import { WORKOUT_TYPES } from '@/lib/utils/constants';
 import { requestNotificationPermissionAndSaveToken } from '@/lib/firebase/fcm';
 import dayjs from 'dayjs';
+import * as XLSX from 'xlsx';
 
 // Categorized Avatars
 const AVATAR_CATEGORIES = {
@@ -245,7 +246,22 @@ function ProfileContent() {
         }
     };
 
-    const handleExportCSV = async () => {
+    const formatPace = (durationSec: number, distanceMeters: number, type: string) => {
+        if (!distanceMeters || !durationSec) return '-';
+        let pace = 0;
+        if (type === 'swimming') {
+            pace = (durationSec / 60) / (distanceMeters / 100);
+        } else {
+            pace = (durationSec / 60) / (distanceMeters / 1000);
+        }
+        
+        const mins = Math.floor(pace);
+        const secs = Math.round((pace - mins) * 60);
+        const unit = type === 'swimming' ? '/100m' : '/km';
+        return `${mins}'${secs.toString().padStart(2, '0')}"${unit}`;
+    };
+
+    const handleExportExcel = async () => {
         if (!profile) return;
         const [start, end] = exportDateRange;
         
@@ -276,41 +292,81 @@ function ProfileContent() {
                 notifications.show({ message: '기록된 운동 데이터가 없습니다', color: 'blue' });
                 return;
             }
-
-            const headers = ['운동 일자', '운동 종류', '운동 시간(초)', '운동 거리(m)', '공유 상태', '작성 날짜'];
             
-            const csvRows = data.map(workout => {
-                const typeMap: Record<string, string> = {
-                    running: '러닝', swimming: '수영', cycling: '자전거', hiking: '등산'
-                };
-                
-                return [
-                    workout.workout_date,
-                    typeMap[workout.workout_type] || workout.workout_type,
-                    workout.duration_seconds,
-                    workout.distance_meters,
-                    workout.sharing_type,
-                    dayjs(workout.created_at).format('YYYY-MM-DD HH:mm:ss')
-                ].map(v => `"${v}"`).join(',');
-            });
+            const wb = XLSX.utils.book_new();
 
-            const BOM = '\uFEFF'; 
-            const csvContent = BOM + [headers.join(','), ...csvRows].join('\n');
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            
-            const link = document.createElement('a');
-            link.href = url;
+            const typeMap: Record<string, string> = {
+                running: '러닝', swimming: '수영', cycling: '자전거', hiking: '등산'
+            };
+
+            const dataByType = data.reduce((acc: any, w) => {
+                if (!acc[w.workout_type]) acc[w.workout_type] = [];
+                acc[w.workout_type].push(w);
+                return acc;
+            }, {});
+
+            for (const [typeKey, workouts] of Object.entries(dataByType)) {
+                let sheetData = [];
+                const wks = workouts as any[];
+                const sheetName = typeMap[typeKey] || typeKey;
+
+                if (typeKey === 'running' || typeKey === 'hiking') {
+                    sheetData = wks.map(w => ({
+                        '운동 일자': w.workout_date,
+                        '운동 종류': sheetName,
+                        '운동 시간': `${Math.floor(w.duration_seconds / 60)}분 ${w.duration_seconds % 60}초`,
+                        '운동 거리(km)': (w.distance_meters / 1000).toFixed(2),
+                        '페이스': formatPace(w.duration_seconds, w.distance_meters, typeKey),
+                        '평균 심박수(bpm)': w.avg_heart_rate || '-',
+                        '케이던스(spm)': w.cadence || '-',
+                        '공유 상태': w.sharing_type,
+                        '기록 일시': dayjs(w.created_at).format('YYYY-MM-DD HH:mm:ss')
+                    }));
+                } else if (typeKey === 'swimming') {
+                    sheetData = wks.map(w => ({
+                        '운동 일자': w.workout_date,
+                        '운동 종류': sheetName,
+                        '운동 시간': `${Math.floor(w.duration_seconds / 60)}분 ${w.duration_seconds % 60}초`,
+                        '운동 거리(m)': w.distance_meters,
+                        '페이스': formatPace(w.duration_seconds, w.distance_meters, typeKey),
+                        '평균 심박수(bpm)': w.avg_heart_rate || '-',
+                        'SWOLF': w.swolf || '-',
+                        '공유 상태': w.sharing_type,
+                        '기록 일시': dayjs(w.created_at).format('YYYY-MM-DD HH:mm:ss')
+                    }));
+                } else if (typeKey === 'cycling') {
+                    sheetData = wks.map(w => ({
+                        '운동 일자': w.workout_date,
+                        '운동 종류': sheetName,
+                        '운동 시간': `${Math.floor(w.duration_seconds / 60)}분 ${w.duration_seconds % 60}초`,
+                        '운동 거리(km)': (w.distance_meters / 1000).toFixed(2),
+                        '평균 속도(km/h)': w.duration_seconds > 0 ? ((w.distance_meters / 1000) / (w.duration_seconds / 3600)).toFixed(1) : '-',
+                        '평균 심박수(bpm)': w.avg_heart_rate || '-',
+                        '파워(W)': w.avg_power || '-',
+                        '공유 상태': w.sharing_type,
+                        '기록 일시': dayjs(w.created_at).format('YYYY-MM-DD HH:mm:ss')
+                    }));
+                } else {
+                    sheetData = wks.map(w => ({
+                        '운동 일자': w.workout_date,
+                        '운동 종류': sheetName,
+                        '운동 시간': `${Math.floor(w.duration_seconds / 60)}분 ${w.duration_seconds % 60}초`,
+                        '거리(m)': w.distance_meters,
+                        '작성 일시': dayjs(w.created_at).format('YYYY-MM-DD HH:mm:ss')
+                    }));
+                }
+
+                const ws = XLSX.utils.json_to_sheet(sheetData);
+                XLSX.utils.book_append_sheet(wb, ws, sheetName);
+            }
+
             const filename = useDateRange && start && end 
-                ? `workout_data_${dayjs(start).format('YYYYMMDD')}_to_${dayjs(end).format('YYYYMMDD')}.csv`
-                : `workout_data_all_time_${dayjs().format('YYYYMMDD')}.csv`;
+                ? `workout_data_${dayjs(start).format('YYYYMMDD')}_to_${dayjs(end).format('YYYYMMDD')}.xlsx`
+                : `workout_data_all_time_${dayjs().format('YYYYMMDD')}.xlsx`;
             
-            link.setAttribute('download', filename);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            XLSX.writeFile(wb, filename);
             
-            notifications.show({ message: 'CSV 파일 다운로드가 시작되었습니다', color: 'green' });
+            notifications.show({ message: '엑셀 파일 다운로드가 시작되었습니다', color: 'green' });
             setExportModalOpen(false);
             setExportDateRange([null, null]);
             setUseDateRange(false);
@@ -907,8 +963,8 @@ function ProfileContent() {
                 </Tabs>
             </Modal>
 
-            {/* Export CSV Modal */}
-            <Modal opened={exportModalOpen} onClose={() => setExportModalOpen(false)} title="운동 기록 내보내기 (CSV)">
+            {/* Export Excel Modal */}
+            <Modal opened={exportModalOpen} onClose={() => setExportModalOpen(false)} title="운동 기록 내보내기 (Excel)">
                 <Stack>
                     <Group justify="space-between">
                         <Text size="sm" fw={500}>전체 기간 검색</Text>
@@ -934,8 +990,8 @@ function ProfileContent() {
                         <Text size="xs" c="dimmed">회원님의 모든 운동 기록이 추출됩니다.</Text>
                     )}
 
-                    <Button mt="md" onClick={handleExportCSV} leftSection={<IconDownload size={16} />}>
-                        CSV 다운로드
+                    <Button mt="md" onClick={handleExportExcel} leftSection={<IconDownload size={16} />}>
+                        Excel 다운로드 (.xlsx)
                     </Button>
                 </Stack>
             </Modal>
