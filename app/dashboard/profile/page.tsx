@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useRef, Suspense } from 'react';
 import { Container, Title, Paper, Stack, Text, Group, Avatar, Badge, Button, Modal, TextInput, PasswordInput, FileButton, ActionIcon, Grid, SimpleGrid, LoadingOverlay, Divider, Tabs, Switch, NumberInput, Select, Textarea } from '@mantine/core';
-import { IconMail, IconPhone, IconShieldCheck, IconPencil, IconCamera, IconLock, IconUpload, IconCheck, IconTarget, IconBellRinging, IconBellOff } from '@tabler/icons-react';
+import { DatePickerInput } from '@mantine/dates';
+import { IconMail, IconPhone, IconShieldCheck, IconPencil, IconCamera, IconLock, IconUpload, IconCheck, IconTarget, IconBellRinging, IconBellOff, IconDownload } from '@tabler/icons-react';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { createClient } from '@/lib/supabase/client';
@@ -10,6 +11,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import type { UserProfile, PersonalGoal } from '@/types';
 import { WORKOUT_TYPES } from '@/lib/utils/constants';
 import { requestNotificationPermissionAndSaveToken } from '@/lib/firebase/fcm';
+import dayjs from 'dayjs';
 
 // Categorized Avatars
 const AVATAR_CATEGORIES = {
@@ -57,6 +59,10 @@ function ProfileContent() {
     const [editInfoModalOpen, setEditInfoModalOpen] = useState(false);
     const [passwordModalOpen, setPasswordModalOpen] = useState(false);
     const [permissionGuideModalOpen, setPermissionGuideModalOpen] = useState(false);
+
+    // Export State
+    const [exportModalOpen, setExportModalOpen] = useState(false);
+    const [exportDateRange, setExportDateRange] = useState<[Date | null, Date | null]>([null, null]);
 
     // Goal State
     const [goalModalOpen, setGoalModalOpen] = useState(false);
@@ -235,6 +241,75 @@ function ProfileContent() {
             setProfile(data);
             setOverallGoal(data.overall_goal || '');
             setPushEnabled(!!data.fcm_token);
+        }
+    };
+
+    const handleExportCSV = async () => {
+        if (!profile) return;
+        const [start, end] = exportDateRange;
+        if (!start || !end) {
+            notifications.show({ message: '시작일과 종료일을 모두 선택해주세요', color: 'orange' });
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const startDate = dayjs(start).format('YYYY-MM-DD');
+            const endDate = dayjs(end).format('YYYY-MM-DD');
+
+            const { data, error } = await supabase
+                .from('workouts')
+                .select('*')
+                .eq('user_id', profile.id)
+                .gte('workout_date', startDate)
+                .lte('workout_date', endDate)
+                .order('workout_date', { ascending: false });
+
+            if (error) throw error;
+
+            if (!data || data.length === 0) {
+                notifications.show({ message: '해당 기간에 기록된 운동 데이터가 없습니다', color: 'blue' });
+                return;
+            }
+
+            const headers = ['운동 일자', '운동 종류', '운동 시간(초)', '운동 거리(m)', '공유 상태', '작성 날짜'];
+            
+            const csvRows = data.map(workout => {
+                const typeMap: Record<string, string> = {
+                    running: '러닝', swimming: '수영', cycling: '자전거', hiking: '등산'
+                };
+                
+                return [
+                    workout.workout_date,
+                    typeMap[workout.workout_type] || workout.workout_type,
+                    workout.duration_seconds,
+                    workout.distance_meters,
+                    workout.sharing_type,
+                    dayjs(workout.created_at).format('YYYY-MM-DD HH:mm:ss')
+                ].map(v => `"${v}"`).join(',');
+            });
+
+            const BOM = '\uFEFF'; 
+            const csvContent = BOM + [headers.join(','), ...csvRows].join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `workout_data_${startDate}_to_${endDate}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            notifications.show({ message: 'CSV 파일 다운로드가 시작되었습니다', color: 'green' });
+            setExportModalOpen(false);
+            setExportDateRange([null, null]);
+
+        } catch (error) {
+            console.error('Export error:', error);
+            notifications.show({ message: '데이터 내보내기에 실패했습니다', color: 'red' });
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -512,14 +587,24 @@ function ProfileContent() {
                         <Button variant="outline" color="gray" onClick={() => setPasswordModalOpen(true)}>비밀번호 변경</Button>
                     </Group>
 
-                    <Button
-                        variant="filled"
-                        color="teal"
-                        leftSection={<IconTarget size={20} />}
-                        onClick={() => setGoalModalOpen(true)}
-                    >
-                        운동 목표 설정
-                    </Button>
+                    <Group grow>
+                        <Button
+                            variant="filled"
+                            color="teal"
+                            leftSection={<IconTarget size={20} />}
+                            onClick={() => setGoalModalOpen(true)}
+                        >
+                            운동 목표 설정
+                        </Button>
+                        <Button
+                            variant="light"
+                            color="indigo"
+                            leftSection={<IconDownload size={20} />}
+                            onClick={() => setExportModalOpen(true)}
+                        >
+                            운동 기록 내보내기
+                        </Button>
+                    </Group>
 
                     <Text size="xs" c="dimmed" ta="center" mt="md">
                         가입일: {new Date(profile.created_at).toLocaleDateString('ko-KR')}
@@ -810,6 +895,25 @@ function ProfileContent() {
                         </Tabs.Panel>
                     ))}
                 </Tabs>
+            </Modal>
+
+            {/* Export CSV Modal */}
+            <Modal opened={exportModalOpen} onClose={() => setExportModalOpen(false)} title="운동 기록 내보내기 (CSV)">
+                <Stack>
+                    <Text size="sm" c="dimmed">다운로드할 운동 기록의 기간을 선택해주세요.</Text>
+                    <DatePickerInput
+                        type="range"
+                        label="기간 선택"
+                        placeholder="시작일 - 종료일"
+                        value={exportDateRange}
+                        onChange={setExportDateRange}
+                        valueFormat="YYYY-MM-DD"
+                        clearable
+                    />
+                    <Button mt="md" onClick={handleExportCSV} leftSection={<IconDownload size={16} />}>
+                        CSV 다운로드
+                    </Button>
+                </Stack>
             </Modal>
         </Container >
     );
