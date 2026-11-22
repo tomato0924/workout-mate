@@ -363,7 +363,7 @@ export default function YearRecapPage() {
         let cancelled = false;
         (async () => {
             const { data: { user } } = await createClient().auth.getUser();
-            const key = `year_recap_ai_${user?.id}_${year}`;
+            const key = `year_recap_ai_v2_${user?.id}_${year}`;
             try {
                 const cached = localStorage.getItem(key);
                 if (cached) {

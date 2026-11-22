@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
 - 종목: ${types}
 - 가장 열심히 한 달: ${r.busiestMonth ? `${r.busiestMonth.month}월(${r.busiestMonth.count}회)` : '없음'}
 - 가장 자주 운동한 요일: ${r.favoriteWeekday ? `${WEEKDAY_LABELS[r.favoriteWeekday.weekday]}요일` : '없음'}
-- 참가 대회: ${r.competitions.length > 0 ? r.competitions.map(c => c.name).join(', ') : '없음'}
+- 참가 신청한 대회(완주 여부는 알 수 없음): ${r.competitions.length > 0 ? `${r.competitions.length}개 - ${r.competitions.map(c => c.name).join(', ')}` : '없음'}
 - 친구들에게 받은 응원 ${r.reactionsReceived + r.commentsReceived}개, 내가 남긴 응원 ${r.cheersGiven}개
 
 # Constraints:
@@ -50,6 +50,7 @@ export async function GET(req: NextRequest) {
 2. message: 한 해를 칭찬하고 ${year + 1}년을 응원하는 2~3문장, 120자 이내, 이모지 1~2개
 3. 데이터에 있는 구체적인 숫자나 사실을 최소 1개 언급
 4. 과장된 의학적 조언 금지
+5. 대회는 "참가", "도전"으로만 표현하고 "완주", "우승", "입상", "기록 달성"처럼 결과를 단정하는 표현은 title과 message 모두에서 쓰지 말 것
 
 # Output JSON Format:
 { "title": "...", "message": "..." }
