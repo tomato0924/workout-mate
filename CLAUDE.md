@@ -51,7 +51,13 @@ npm run lint
 
 ## 환경 변수 (`.env.local`, git 제외)
 
-`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY`, `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`. Vercel에도 동일하게 설정되어 있어야 함.
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY`, `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`, `PUSH_WEBHOOK_SECRET`. Vercel에도 동일하게 설정되어 있어야 함.
+Supabase 키는 신규 형식(`sb_publishable_…`, `sb_secret_…`)을 사용하며 Legacy JWT 키는 비활성화됨(2026-11, 키 노출 사고 후 교체).
+
+## 푸시 알림 흐름
+
+`notifications` 테이블 INSERT → Supabase Database Webhook → `POST /api/notifications/push` → FCM 발송.
+이 라우트는 `x-webhook-secret` 헤더를 `PUSH_WEBHOOK_SECRET`과 비교해 검증하며, 환경 변수가 없으면 모든 요청을 401로 거부함.
 
 ## 주의사항 (과거에 겪은 문제)
 

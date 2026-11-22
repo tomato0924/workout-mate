@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { timingSafeEqual } from 'crypto';
 import { sendPushNotification } from '@/lib/firebase/admin';
 import { createClient } from '@supabase/supabase-js';
 
@@ -8,11 +9,37 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+const WEBHOOK_SECRET_HEADER = 'x-webhook-secret';
+
+/**
+ * Supabase Database Webhook에 설정한 비밀 헤더(x-webhook-secret)가
+ * 환경 변수 PUSH_WEBHOOK_SECRET과 일치하는지 확인합니다.
+ * 환경 변수가 없으면 모든 요청을 거부합니다(fail closed).
+ */
+function isAuthorizedWebhook(request: Request): boolean {
+    const expected = process.env.PUSH_WEBHOOK_SECRET;
+    if (!expected) {
+        console.error('[Push Webhook API] PUSH_WEBHOOK_SECRET is not configured; rejecting request');
+        return false;
+    }
+
+    const received = request.headers.get(WEBHOOK_SECRET_HEADER);
+    if (!received) return false;
+
+    const a = Buffer.from(received);
+    const b = Buffer.from(expected);
+    return a.length === b.length && timingSafeEqual(a, b);
+}
+
 /**
  * [POST] /api/notifications/push
  * Supabase Database Webhook으로 notifications 테이블 INSERT 감지 시 호출됩니다.
  */
 export async function POST(request: Request) {
+    if (!isAuthorizedWebhook(request)) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
         const body = await request.json();
 
