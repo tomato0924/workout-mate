@@ -12,7 +12,8 @@ npm run build        # 프로덕션 빌드 검증 (useSearchParams/Suspense 오�
 npm run lint
 ```
 
-자동화된 테스트 프레임워크는 없음 (`testsprite_tests/`는 외부 도구가 만든 Python 테스트로 일상 검증에 쓰지 않음). 검증은 `tsc` + `build` + 브라우저 수동 확인.
+자동화된 테스트 프레임워크는 없음. 검증은 `tsc` + `build` + 브라우저 수동 확인(`.claude/launch.json`의 `dev` 설정으로 개발 서버 실행).
+`.claude/settings.json`의 Stop 훅이 턴 종료 시 `.ts/.tsx` 변경이 있으면 `tsc --noEmit`을 자동 실행하고, 오류가 있으면 수정을 요구함.
 
 ## 기술 스택
 
@@ -45,9 +46,10 @@ npm run lint
 
 ## 데이터베이스 변경
 
-마이그레이션 도구 없음. 루트의 `*.sql` 파일을 **Supabase 대시보드 SQL Editor에서 사용자가 직접 실행**하는 방식.
-- 기본 스키마: `supabase-schema.sql` → `supabase-rls.sql` → `supabase-storage.sql`, 이후 기능별 `*_migration.sql`, `add_*.sql`, `create_*.sql`, `fix_*.sql`.
-- 스키마 변경 시: 새 SQL 파일을 루트에 만들고 `types/index.ts` 타입도 갱신, 사용자에게 실행을 요청. RLS 정책 누락/재귀 정책(과거 `fix_recursive_*` 이슈) 주의.
+마이그레이션 도구 없음. SQL 파일을 **Supabase 대시보드 SQL Editor에서 사용자가 직접 실행**하는 방식 (`db/` 아래 파일은 모두 운영 DB에 이미 적용됨).
+- `db/schema/` 기본 스키마(01 테이블 → 02 RLS → 03 Storage), `db/migrations/` 이후 변경분(`NNN_설명.sql`, 번호 순 적용), `db/seeds/` 초기 데이터, `db/queries/` 점검용 조회(적용 대상 아님).
+- 스키마 변경 시: `db/migrations/`에 다음 번호로 새 파일을 만들고 `types/index.ts` 타입도 갱신, 사용자에게 SQL을 보여주고 확인받은 뒤 실행. RLS 정책 누락/재귀 정책(과거 `fix_recursive_*` 이슈) 주의.
+- `supabase/migrations/` 폴더는 쓰지 않음 (Supabase CLI가 이미 적용된 파일을 미적용으로 오인할 수 있음).
 
 ## 환경 변수 (`.env.local`, git 제외)
 
@@ -68,12 +70,13 @@ Supabase 키는 신규 형식(`sb_publishable_…`, `sb_secret_…`)을 사용�
 - 이미지는 `**.supabase.co` 원격 패턴만 허용(`next.config.mjs`).
 - `MyWorkoutTab.tsx`(~1800줄), `competitions/page.tsx`, `profile/page.tsx`는 매우 큼 — 필요한 부분만 읽고 수정.
 
-## 루트의 잡동사니 파일
+## 문서
 
-`update*.js`, `apply_jsx*.js`, `transform_page.*`, `build_output.txt`, `lint.txt`, `tsc_output*.txt`, `detail_block.txt`, `list_models.js`, `test_api.js`, `temp/`, `tmp/`, `AI_GOAL_RECOMMENDATIONS_CODE.txt` 등은 Antigravity가 남긴 일회성 스크립트/출력물로 앱 코드가 아님. 참고하거나 수정하지 말 것.
+`docs/requirements.md`(초기 요구사항), `docs/specs/`(기능 명세), `docs/backend-test-checklist.md`(백엔드 수동 테스트 항목).
 
 ## 작업 방식
 
 - 기능 단위로 계획 → (필요 시 사용자 확인) → 구현 → `npx tsc --noEmit`/`npm run build` 확인 → 커밋.
 - 커밋 메시지: Conventional 접두어 + 한국어 요약. 예) `feat: 크루 최근 활동 미니 피드에 사용자 아바타 노출 추가`, `fix(competitions): ...`
-- 지금까지는 `main`에 직접 커밋·푸시해왔음. 푸시(=Vercel 배포)는 사용자 요청 시에만.
+- **`main` 푸시 = 운영 배포**(실사용자 있음). 기능/수정 작업은 `feat/…`, `fix/…`, `chore/…` 브랜치에서 하고 PR을 만들어 Vercel 미리보기 URL에서 확인한 뒤 병합. 아주 작은 문구 수정만 사용자 요청 시 `main` 직접 반영.
+- 푸시·PR 생성·병합은 사용자 요청 시에만.
