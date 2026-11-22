@@ -4,6 +4,7 @@ import { Container, Stack, Tabs, Title } from '@mantine/core';
 import { IconChartBar, IconList } from '@tabler/icons-react';
 import { MyWorkoutTab } from '@/components/dashboard/MyWorkoutTab';
 import { FeedTab } from '@/components/dashboard/FeedTab';
+import { RecapBanner } from '@/components/recap/RecapBanner';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState, Suspense } from 'react';
 
@@ -30,7 +31,7 @@ function DashboardContent() {
         <Container size="md">
             <Stack>
                 <Title order={2}>운동 피드</Title>
-
+                <RecapBanner />
 
                 <Tabs value={activeTab} onChange={handleTabChange} keepMounted={false}>
                     <Tabs.List>

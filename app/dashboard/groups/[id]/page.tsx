@@ -34,6 +34,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 import { WorkoutCard } from '@/components/workout/WorkoutCard';
+import Link from 'next/link';
+import { getRecapYear, isRecapSeason } from '@/lib/recap/compute';
 import { formatWorkoutDistance, formatWorkoutDuration } from '@/lib/utils/format';
 import type { Workout, UserProfile, Group as GroupType, GroupGoal, WorkoutType } from '@/types';
 
@@ -418,15 +420,28 @@ export default function GroupDetailPage() {
                         <Title order={2}>{group.name}</Title>
                         <Text c="dimmed">{group.description}</Text>
                     </div>
-                    {currentUser && group.owner_id === currentUser.id && (
-                        <Button
-                            variant="light"
-                            leftSection={<IconSettings size={16} />}
-                            onClick={() => setAdminModalOpen(true)}
-                        >
-                            크루 관리
-                        </Button>
-                    )}
+                    <Group gap="xs">
+                        {isRecapSeason() && (
+                            <Button
+                                component={Link}
+                                href={`/dashboard/groups/${group.id}/awards`}
+                                variant="gradient"
+                                gradient={{ from: 'indigo', to: 'grape', deg: 120 }}
+                                leftSection={<IconTrophy size={16} />}
+                            >
+                                {getRecapYear()} 연말 시상식
+                            </Button>
+                        )}
+                        {currentUser && group.owner_id === currentUser.id && (
+                            <Button
+                                variant="light"
+                                leftSection={<IconSettings size={16} />}
+                                onClick={() => setAdminModalOpen(true)}
+                            >
+                                크루 관리
+                            </Button>
+                        )}
+                    </Group>
                 </Group>
 
                 {/* Filters */}
