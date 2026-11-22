@@ -11,12 +11,15 @@ import {
     IconLogout,
     IconRun,
     IconCalendarEvent,
+    IconSnowflake,
+    IconSnowflakeOff,
 } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
 import type { UserProfile } from '@/types';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { AnnouncementPopup } from '@/components/announcements/AnnouncementPopup';
 import Link from 'next/link';
+import { FestiveProvider, FestiveLogoBadge, FestiveHeaderStrip, useFestive } from '@/components/theme/festive';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -75,11 +78,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     };
 
     return (
+        <FestiveProvider>
         <AppShell
             header={{ height: 60 }}
             padding="md"
         >
             <AppShell.Header>
+                <FestiveHeaderStrip />
                 <Container size="lg" h="100%">
                     <Group h="100%" justify="space-between" wrap="nowrap">
                         <Group gap="sm" wrap="nowrap">
@@ -88,6 +93,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                 <Group gap={4} wrap="nowrap">
                                     <IconRun size={28} color="#228be6" />
                                     <Title order={3} visibleFrom="xs">Workout Mate</Title>
+                                    <FestiveLogoBadge />
                                 </Group>
                             </Link>
 
@@ -170,6 +176,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                             </Menu.Item>
                                         )}
 
+                                        <SnowToggleMenuItem />
+
                                         <Menu.Divider />
                                         <Menu.Item
                                             color="red"
@@ -193,5 +201,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 {profile && <AnnouncementPopup />}
             </AppShell.Main>
         </AppShell>
+        </FestiveProvider>
+    );
+}
+
+function SnowToggleMenuItem() {
+    const { active, snowOn, setSnowOn } = useFestive();
+    if (!active) return null;
+    return (
+        <Menu.Item
+            leftSection={snowOn ? <IconSnowflakeOff size={14} /> : <IconSnowflake size={14} />}
+            onClick={() => setSnowOn(!snowOn)}
+        >
+            {snowOn ? '눈 효과 끄기' : '눈 효과 켜기'}
+        </Menu.Item>
     );
 }
