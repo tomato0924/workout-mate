@@ -41,7 +41,7 @@
 
 ### 3.2 테이블 생성
 
-1. `supabase-schema.sql` 파일 내용 전체를 복사
+1. `db/schema/01_schema.sql` 파일 내용 전체를 복사
 2. SQL 에디터에 붙여넣기
 3. 우측 하단 "Run" 버튼 클릭 (또는 Ctrl+Enter)
 4. 성공 메시지 확인: "Success. No rows returned"
@@ -49,7 +49,7 @@
 ### 3.3 Row Level Security 정책 적용
 
 1. 새로운 쿼리 생성 ("New query")
-2. `supabase-rls.sql` 파일 내용 전체를 복사
+2. `db/schema/02_rls.sql` 파일 내용 전체를 복사
 3. SQL 에디터에 붙여넣기
 4. "Run" 버튼 클릭
 5. 성공 확인
@@ -57,7 +57,7 @@
 ### 3.4 Storage 버킷 생성
 
 1. 새로운 쿼리 생성
-2. `supabase-storage.sql` 파일 내용을 복사
+2. `db/schema/03_storage.sql` 파일 내용을 복사
 3. SQL 에디터에 붙여넣기
 4. "Run" 버튼 클릭
 
@@ -211,7 +211,7 @@ npm run dev
 
 **해결책**:
 1. Supabase 대시보드 > Authentication > Policies 확인
-2. `supabase-rls.sql` 스크립트 다시 실행
+2. `db/schema/02_rls.sql` 스크립트 다시 실행
 
 ### 이미지 업로드 실패
 

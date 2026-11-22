@@ -44,13 +44,16 @@ Supabase 대시보드의 SQL Editor에서 다음 파일들을 순서대로 실�
 
 ```sql
 -- 1. 테이블 생성
--- supabase-schema.sql 파일 내용 실행
+-- db/schema/01_schema.sql 파일 내용 실행
 
 -- 2. Row Level Security 정책 적용
--- supabase-rls.sql 파일 내용 실행
+-- db/schema/02_rls.sql 파일 내용 실행
 
 -- 3. Storage 설정
--- supabase-storage.sql 파일 내용 실행
+-- db/schema/03_storage.sql 파일 내용 실행
+
+-- 4. 이후 변경분
+-- db/migrations/ 의 파일을 번호 순서대로 실행
 ```
 
 ### 4. 프로젝트 설정
@@ -153,9 +156,12 @@ workout_mate/
 │   ├── supabase/          # Supabase 클라이언트
 │   └── utils/             # 유틸리티 함수
 ├── types/                 # TypeScript 타입 정의
-├── supabase-schema.sql    # 데이터베이스 스키마
-├── supabase-rls.sql       # Row Level Security 정책
-└── supabase-storage.sql   # Storage 설정
+├── db/
+│   ├── schema/            # 기본 스키마 (01 테이블 → 02 RLS → 03 Storage)
+│   ├── migrations/        # 이후 변경분 (번호 순서대로 적용)
+│   ├── seeds/             # 초기 데이터
+│   └── queries/           # 점검·조회용 SQL (적용 대상 아님)
+└── docs/                  # 요구사항, 기능 명세, 테스트 체크리스트
 ```
 
 ## 🔒 보안 및 권한
