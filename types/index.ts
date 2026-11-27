@@ -219,6 +219,17 @@ export interface CompetitionCommentReaction {
     user?: UserProfile;
 }
 
+/** AI 비서(MCP) 연결 키 메타데이터. 원문 키는 발급 시 한 번만 응답에 포함된다. */
+export interface McpApiKey {
+    id: string;
+    user_id: string;
+    key_prefix: string;
+    label?: string | null;
+    created_at: string;
+    last_used_at?: string | null;
+    revoked_at?: string | null;
+}
+
 export interface Announcement {
     id: string;
     title: string;
