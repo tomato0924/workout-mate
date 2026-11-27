@@ -1,10 +1,11 @@
 'use client';
 
-import { Container, Stack, Tabs, Title } from '@mantine/core';
+import { Container, Group, Stack, Tabs, Title } from '@mantine/core';
 import { IconChartBar, IconList } from '@tabler/icons-react';
 import { MyWorkoutTab } from '@/components/dashboard/MyWorkoutTab';
 import { FeedTab } from '@/components/dashboard/FeedTab';
 import { RecapBanner } from '@/components/recap/RecapBanner';
+import { RecapButton } from '@/components/recap/RecapButton';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState, Suspense } from 'react';
 
@@ -30,7 +31,10 @@ function DashboardContent() {
     return (
         <Container size="md">
             <Stack>
-                <Title order={2}>운동 피드</Title>
+                <Group justify="space-between" wrap="nowrap">
+                    <Title order={2}>운동 피드</Title>
+                    <RecapButton />
+                </Group>
                 <RecapBanner />
 
                 <Tabs value={activeTab} onChange={handleTabChange} keepMounted={false}>

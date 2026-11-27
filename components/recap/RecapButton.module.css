@@ -1,0 +1,22 @@
+.button {
+    flex-shrink: 0;
+    font-weight: 800;
+    box-shadow: 0 4px 14px rgba(219, 39, 119, 0.35);
+    animation: glow 2.4s ease-in-out infinite;
+}
+
+@keyframes glow {
+    0%,
+    100% {
+        box-shadow: 0 4px 14px rgba(219, 39, 119, 0.35);
+    }
+    50% {
+        box-shadow: 0 4px 22px rgba(109, 40, 217, 0.6);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .button {
+        animation: none;
+    }
+}
