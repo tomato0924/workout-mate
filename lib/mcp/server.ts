@@ -46,6 +46,9 @@ async function run(name: string, fn: () => Promise<string>): Promise<CallToolRes
     }
 }
 
+/** 닉네임에 '님'을 붙인다. 이미 '님'으로 끝나면 그대로 */
+const honorific = (name: string) => (name.endsWith('님') ? name : `${name}님`);
+
 const readOnly = (title: string) => ({ title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false });
 
 function sumByType(rows: WorkoutRow[]) {
@@ -109,8 +112,7 @@ export function createWorkoutMateServer(user: McpUser, appOrigin: string): McpSe
             const { data: goals } = await admin.from('personal_goals').select('activity_type, target_value, metric_type')
                 .eq('user_id', user.id).eq('is_active', true).eq('period_type', goalPeriod).eq('metric_type', 'distance');
 
-            const who = user.nickname.endsWith('님') ? user.nickname : `${user.nickname}님`;
-            const lines = [`## ${cell(who)}의 ${PERIOD_LABEL[p]} 운동 요약 (${start} ~ ${end})`];
+            const lines = [`## ${cell(honorific(user.nickname))}의 ${PERIOD_LABEL[p]} 운동 요약 (${start} ~ ${end})`];
             if (rows.length === 0) {
                 lines.push('', '이 기간에 기록한 운동이 없어요.');
             } else {
@@ -426,7 +428,7 @@ export function createWorkoutMateServer(user: McpUser, appOrigin: string): McpSe
                 done.push(`댓글 "${content}"`);
             }
             const [owner] = (await nicknames(admin, [w.user_id])).values();
-            return `💬 ${owner ?? '작성자'}님의 기록에 ${done.join(', ')}을(를) 남겼어요.\n\n[기록 보기](${workoutLink(workout_id)})`;
+            return `💬 ${cell(honorific(owner ?? '작성자'))}의 기록에 ${done.join(', ')}을(를) 남겼어요.\n\n[기록 보기](${workoutLink(workout_id)})`;
         }),
     );
 
