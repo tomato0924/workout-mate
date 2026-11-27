@@ -21,6 +21,14 @@ export const formatWorkoutDistance = (meters: number, type: WorkoutType): string
     return `${(meters / 1000).toFixed(2)}km`;
 };
 
+/** 분(소수) → m'ss'' 표기. 초가 60으로 반올림되면 분으로 올린다 (예: 7.999분 → 8'00'') */
+const formatPace = (paceDec: number): string => {
+    const totalSec = Math.round(paceDec * 60);
+    const pM = Math.floor(totalSec / 60);
+    const pS = totalSec % 60;
+    return `${pM}'${pS.toString().padStart(2, '0')}''`;
+};
+
 export const formatWorkoutMetric = (meters: number, seconds: number, type: WorkoutType): { value: string, label: string } => {
     if (seconds === 0 || meters === 0) return { value: '-', label: '-' };
 
@@ -28,20 +36,16 @@ export const formatWorkoutMetric = (meters: number, seconds: number, type: Worko
         // Pace per 100m
         // minutes per 100m = (seconds / 60) / (meters / 100)
         const paceDec = (seconds / 60) / (meters / 100);
-        const pM = Math.floor(paceDec);
-        const pS = Math.round((paceDec - pM) * 60);
         return {
-            value: `${pM}'${pS.toString().padStart(2, '0')}''`,
+            value: formatPace(paceDec),
             label: '100m 페이스'
         };
     } else if (type === 'running') {
         // Pace per km
         // minutes per km = (seconds / 60) / (meters / 1000)
         const paceDec = (seconds / 60) / (meters / 1000);
-        const pM = Math.floor(paceDec);
-        const pS = Math.round((paceDec - pM) * 60);
         return {
-            value: `${pM}'${pS.toString().padStart(2, '0')}''`,
+            value: formatPace(paceDec),
             label: '1km 페이스'
         };
     } else {

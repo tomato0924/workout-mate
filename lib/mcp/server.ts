@@ -109,7 +109,8 @@ export function createWorkoutMateServer(user: McpUser, appOrigin: string): McpSe
             const { data: goals } = await admin.from('personal_goals').select('activity_type, target_value, metric_type')
                 .eq('user_id', user.id).eq('is_active', true).eq('period_type', goalPeriod).eq('metric_type', 'distance');
 
-            const lines = [`## ${user.nickname}님의 ${PERIOD_LABEL[p]} 운동 요약 (${start} ~ ${end})`];
+            const who = user.nickname.endsWith('님') ? user.nickname : `${user.nickname}님`;
+            const lines = [`## ${cell(who)}의 ${PERIOD_LABEL[p]} 운동 요약 (${start} ~ ${end})`];
             if (rows.length === 0) {
                 lines.push('', '이 기간에 기록한 운동이 없어요.');
             } else {
