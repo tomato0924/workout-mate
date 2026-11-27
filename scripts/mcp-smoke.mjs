@@ -3,6 +3,7 @@
 // 사용법 (PowerShell):
 //   $env:MCP_KEY = "wm_..."                           # 내 정보 > AI 비서 연결에서 발급한 키
 //   $env:MCP_URL = "http://localhost:3000/api/mcp"    # 생략 시 이 값. 미리보기 URL도 가능
+//   $env:VERCEL_BYPASS = "..."                         # 보호된 Vercel 미리보기일 때만: Protection Bypass for Automation 시크릿
 //   node scripts/mcp-smoke.mjs            # 읽기 툴만
 //   node scripts/mcp-smoke.mjs --write    # 쓰기 툴까지 ('나만 보기' 테스트 기록 1건 생성됨)
 //
@@ -29,6 +30,8 @@ async function rpc(method, params, { notify = false } = {}) {
             Accept: 'application/json, text/event-stream',
             'MCP-Protocol-Version': '2025-06-18',
             'X-Workout-Mate-Key': key,
+            // Vercel 미리보기 Deployment Protection 우회 (Settings > Deployment Protection > Protection Bypass for Automation)
+            ...(process.env.VERCEL_BYPASS ? { 'x-vercel-protection-bypass': process.env.VERCEL_BYPASS } : {}),
         },
         body: JSON.stringify(body),
     });
