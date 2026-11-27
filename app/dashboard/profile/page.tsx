@@ -13,6 +13,7 @@ import { WORKOUT_TYPES } from '@/lib/utils/constants';
 import { requestNotificationPermissionAndSaveToken } from '@/lib/firebase/fcm';
 import dayjs from 'dayjs';
 import * as XLSX from 'xlsx';
+import { AiAssistantConnect } from '@/components/profile/AiAssistantConnect';
 
 // Categorized Avatars
 const AVATAR_CATEGORIES = {
@@ -677,6 +678,8 @@ function ProfileContent() {
                     </Text>
                 </Stack>
             </Paper>
+
+            <AiAssistantConnect />
 
             {/* Avatar Selection Modal */}
             <Modal opened={avatarModalOpen} onClose={() => setAvatarModalOpen(false)} title="프로필 이미지 변경" size="lg">
