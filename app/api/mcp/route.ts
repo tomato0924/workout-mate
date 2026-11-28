@@ -14,12 +14,13 @@ function jsonRpcError(status: number, message: string) {
     });
 }
 
-/** 진단용 로그 (키 값은 남기지 않음) */
-function logRequest(request: Request, rpcMethod: string, status: number, note = '') {
+/** 진단용 로그 (키 값은 남기지 않음). ms는 요청 처리 시간 */
+function logRequest(request: Request, rpcMethod: string, status: number, note = '', startedAt?: number) {
     const h = request.headers;
     console.log('[mcp]', JSON.stringify({
         rpc: rpcMethod,
         status,
+        ms: startedAt ? Date.now() - startedAt : undefined,
         accept: h.get('accept'),
         contentType: h.get('content-type'),
         protocolVersion: h.get('mcp-protocol-version'),
@@ -40,18 +41,31 @@ function rpcMethodOf(body: string): string {
     }
 }
 
+// 데이터를 다루지 않는 연결 수립 메시지. 키 조회(DB 왕복) 없이 바로 응답해 연결 검증기의 시간 제한을 넘기지 않게 한다.
+// (PlayMCP 검증기는 전체 확인을 약 3초 안에 끝내지 못하면 실패 처리 — 2026-11-28 Vercel 로그로 확인)
+function isHandshakeOnly(rpc: string): boolean {
+    return rpc.split(',').every(m => m === 'initialize' || m === 'ping' || m.startsWith('notifications/'));
+}
+
+const HANDSHAKE_USER = { id: '', nickname: '', keyId: 'handshake' };
+
 export async function POST(request: Request) {
+    const startedAt = Date.now();
     const body = await request.text();
     const rpc = rpcMethodOf(body);
 
-    const user = await authenticateMcpKey(request);
-    if (!user) {
-        logRequest(request, rpc, 401, 'auth');
-        return jsonRpcError(401, '유효한 Workout Mate 연결 키가 필요해요. 앱의 내 정보 > AI 비서 연결에서 발급할 수 있어요.');
-    }
-    if (!checkRateLimit(user.keyId)) {
-        logRequest(request, rpc, 429);
-        return jsonRpcError(429, '요청이 너무 많아요. 잠시 후 다시 시도해 주세요.');
+    let user = HANDSHAKE_USER;
+    if (!isHandshakeOnly(rpc)) {
+        const authed = await authenticateMcpKey(request);
+        if (!authed) {
+            logRequest(request, rpc, 401, 'auth', startedAt);
+            return jsonRpcError(401, '유효한 Workout Mate 연결 키가 필요해요. 앱의 내 정보 > AI 비서 연결에서 발급할 수 있어요.');
+        }
+        if (!checkRateLimit(authed.keyId)) {
+            logRequest(request, rpc, 429, '', startedAt);
+            return jsonRpcError(429, '요청이 너무 많아요. 잠시 후 다시 시도해 주세요.');
+        }
+        user = authed;
     }
 
     // SDK는 Accept에 application/json과 text/event-stream이 모두 있어야 받아 준다(없으면 406).
@@ -74,7 +88,7 @@ export async function POST(request: Request) {
     await server.connect(transport);
     try {
         const response = await transport.handleRequest(normalized);
-        if (response.status >= 400 || rpc === 'initialize') logRequest(request, rpc, response.status);
+        logRequest(request, rpc, response.status, user === HANDSHAKE_USER ? 'handshake' : '', startedAt);
         return response;
     } finally {
         // JSON 응답 모드에서는 handleRequest가 응답 본문을 다 만든 뒤 반환한다
@@ -91,14 +105,12 @@ const SSE_PING_MS = 10_000;
 const SSE_MAX_MS = 25_000;
 
 export async function GET(request: Request) {
-    const user = await authenticateMcpKey(request);
-    if (!user) {
+    // 키 형식만 먼저 확인하고 스트림을 바로 연다(DB 조회로 응답이 늦어지지 않게). 실제 키 검증은 아래에서 비동기로 하고,
+    // 유효하지 않으면 스트림을 즉시 닫는다. 이 스트림으로는 데이터가 전혀 나가지 않는다.
+    const rawKey = request.headers.get(MCP_KEY_HEADER) ?? request.headers.get('authorization')?.replace(/^bearer\s+/i, '');
+    if (!rawKey?.trim().startsWith('wm_')) {
         logRequest(request, 'GET', 401, 'auth');
         return jsonRpcError(401, '유효한 Workout Mate 연결 키가 필요해요. 앱의 내 정보 > AI 비서 연결에서 발급할 수 있어요.');
-    }
-    if (!checkRateLimit(user.keyId)) {
-        logRequest(request, 'GET', 429);
-        return jsonRpcError(429, '요청이 너무 많아요. 잠시 후 다시 시도해 주세요.');
     }
     logRequest(request, 'GET', 200, 'sse');
 
@@ -121,6 +133,14 @@ export async function GET(request: Request) {
             }, SSE_PING_MS);
             stop = setTimeout(close, SSE_MAX_MS);
             request.signal.addEventListener('abort', close);
+            authenticateMcpKey(request)
+                .then(user => {
+                    if (!user || !checkRateLimit(user.keyId)) {
+                        logRequest(request, 'GET', 401, 'sse-auth-failed');
+                        close();
+                    }
+                })
+                .catch(() => close());
         },
         cancel() {
             clearInterval(ping);

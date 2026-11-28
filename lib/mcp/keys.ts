@@ -34,29 +34,39 @@ export async function authenticateMcpKey(request: Request): Promise<McpUser | nu
     }
     if (!raw || !raw.startsWith(KEY_PREFIX) || raw.length > 200) return null;
 
+    const hash = hashKey(raw);
+    const cached = authCache.get(hash);
+    if (cached && cached.expires > Date.now()) return cached.user;
+
+    // 키와 사용자 프로필을 한 번의 왕복으로 조회
     const admin = createAdminClient();
     const { data: key } = await admin
         .from('mcp_api_keys')
-        .select('id, user_id, revoked_at, last_used_at')
-        .eq('key_hash', hashKey(raw))
+        .select('id, user_id, revoked_at, last_used_at, profile:user_profiles(id, nickname, approval_status)')
+        .eq('key_hash', hash)
         .maybeSingle();
     if (!key || key.revoked_at) return null;
-
-    const { data: profile } = await admin
-        .from('user_profiles')
-        .select('id, nickname, approval_status')
-        .eq('id', key.user_id)
-        .single();
+    const profile = (Array.isArray(key.profile) ? key.profile[0] : key.profile) as
+        { id: string; nickname: string; approval_status: string } | null;
     if (!profile || profile.approval_status !== 'approved') return null;
 
-    // 마지막 사용 시각은 1분에 한 번만 갱신 (요청마다 쓰기 방지)
+    // 마지막 사용 시각은 1분에 한 번만 갱신하고, 응답을 기다리게 하지 않는다
     const last = key.last_used_at ? new Date(key.last_used_at).getTime() : 0;
     if (Date.now() - last > 60_000) {
-        await admin.from('mcp_api_keys').update({ last_used_at: new Date().toISOString() }).eq('id', key.id);
+        void admin.from('mcp_api_keys').update({ last_used_at: new Date().toISOString() }).eq('id', key.id)
+            .then(({ error }) => { if (error) console.error('[mcp] last_used_at update failed:', error.message); });
     }
 
-    return { id: profile.id, nickname: profile.nickname, keyId: key.id };
+    const user = { id: profile.id, nickname: profile.nickname, keyId: key.id };
+    authCache.set(hash, { user, expires: Date.now() + AUTH_CACHE_MS });
+    if (authCache.size > 500) authCache.clear();
+    return user;
 }
+
+// 같은 인스턴스에서 연이어 오는 요청(initialize → GET → tools/list …)이 매번 DB를 조회하지 않도록 짧게 캐시.
+// 키를 폐기하면 최대 이 시간만큼 늦게 반영된다.
+const AUTH_CACHE_MS = 60_000;
+const authCache = new Map<string, { user: McpUser; expires: number }>();
 
 // 키별 간단한 요청 수 제한 (인스턴스 메모리 기준, 분당 60회)
 const RATE_LIMIT = 60;
