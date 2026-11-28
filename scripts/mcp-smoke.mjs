@@ -75,6 +75,29 @@ check(!!init.serverInfo, `initialize: ${init.serverInfo?.name} ${init.serverInfo
 const n = await rpc('notifications/initialized', undefined, { notify: true });
 check(n.status === 202, `notifications/initialized → HTTP ${n.status}`);
 
+// GET SSE 스트림: PlayMCP 검증기는 initialize 후 GET을 열고, 405면 연결 실패로 처리한다
+{
+    const ac = new AbortController();
+    const res = await fetch(url, {
+        method: 'GET',
+        headers: {
+            Accept: 'text/event-stream',
+            'X-Workout-Mate-Key': key,
+            ...(process.env.VERCEL_BYPASS ? { 'x-vercel-protection-bypass': process.env.VERCEL_BYPASS } : {}),
+        },
+        signal: ac.signal,
+    });
+    let first = '';
+    if (res.ok && res.body) {
+        const reader = res.body.getReader();
+        const { value } = await reader.read();
+        first = new TextDecoder().decode(value ?? new Uint8Array()).trim();
+    }
+    ac.abort();
+    check(res.status === 200 && (res.headers.get('content-type') ?? '').includes('text/event-stream'),
+        `GET SSE 스트림 → HTTP ${res.status} ${res.headers.get('content-type')} ${first}`);
+}
+
 const { tools } = await rpc('tools/list');
 check(tools.length >= 3 && tools.length <= 20, `tools/list: ${tools.length}개`);
 for (const t of tools) {
