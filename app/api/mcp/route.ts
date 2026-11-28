@@ -83,14 +83,66 @@ export async function POST(request: Request) {
     }
 }
 
-// stateless 서버라 SSE 스트림(GET)과 세션 종료(DELETE)는 지원하지 않음
-function methodNotAllowed(request: Request) {
-    logRequest(request, request.method, 405);
-    return new Response(JSON.stringify({ jsonrpc: '2.0', error: { code: -32000, message: 'Method not allowed.' }, id: null }), {
-        status: 405,
-        headers: { 'Content-Type': 'application/json', Allow: 'POST' },
+// GET: 서버 → 클라이언트 알림용 SSE 스트림.
+// 스펙상 405로 거절해도 되지만, PlayMCP 연결 검증기(Java 클라이언트)는 initialize 후 GET이 405면
+// tools/list로 넘어가지 않고 연결 실패로 처리한다(2026-11-28 Vercel 로그로 확인).
+// 이 서버는 보낼 알림이 없으므로 keep-alive 주석만 보내다가 짧은 시간 뒤 스트림을 닫는다.
+const SSE_PING_MS = 10_000;
+const SSE_MAX_MS = 25_000;
+
+export async function GET(request: Request) {
+    const user = await authenticateMcpKey(request);
+    if (!user) {
+        logRequest(request, 'GET', 401, 'auth');
+        return jsonRpcError(401, '유효한 Workout Mate 연결 키가 필요해요. 앱의 내 정보 > AI 비서 연결에서 발급할 수 있어요.');
+    }
+    if (!checkRateLimit(user.keyId)) {
+        logRequest(request, 'GET', 429);
+        return jsonRpcError(429, '요청이 너무 많아요. 잠시 후 다시 시도해 주세요.');
+    }
+    logRequest(request, 'GET', 200, 'sse');
+
+    const encoder = new TextEncoder();
+    let ping: ReturnType<typeof setInterval> | undefined;
+    let stop: ReturnType<typeof setTimeout> | undefined;
+    const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+            let closed = false;
+            const close = () => {
+                if (closed) return;
+                closed = true;
+                clearInterval(ping);
+                clearTimeout(stop);
+                try { controller.close(); } catch { /* 이미 닫힘 */ }
+            };
+            controller.enqueue(encoder.encode(': connected\n\n'));
+            ping = setInterval(() => {
+                try { controller.enqueue(encoder.encode(': ping\n\n')); } catch { close(); }
+            }, SSE_PING_MS);
+            stop = setTimeout(close, SSE_MAX_MS);
+            request.signal.addEventListener('abort', close);
+        },
+        cancel() {
+            clearInterval(ping);
+            clearTimeout(stop);
+        },
+    });
+
+    return new Response(stream, {
+        status: 200,
+        headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache, no-transform',
+            Connection: 'keep-alive',
+        },
     });
 }
 
-export const GET = methodNotAllowed;
-export const DELETE = methodNotAllowed;
+// stateless 서버라 세션 종료(DELETE)는 지원하지 않음
+export function DELETE(request: Request) {
+    logRequest(request, 'DELETE', 405);
+    return new Response(JSON.stringify({ jsonrpc: '2.0', error: { code: -32000, message: 'Method not allowed.' }, id: null }), {
+        status: 405,
+        headers: { 'Content-Type': 'application/json', Allow: 'GET, POST' },
+    });
+}
